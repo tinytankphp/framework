@@ -12,4 +12,6 @@ return static function (Kernel $app): void {
         file_put_contents($app->cacheDir . '/fixture-step.txt', 'ran:' . var_export($app->debug, true));
     }, 'Fixture closure step', after: 'cache');
     $app->addDeployStep('fixture-command', 'fixture:greet', 'Fixture command step');
+    // A custom spam check, the way a package adds one (see FormsTest).
+    $app->forms->addSpamCheck('word', static fn (mixed $word) => new Starlite\Tests\Fixtures\Spam\WordCheck(is_string($word) ? $word : 'casino'));
 };

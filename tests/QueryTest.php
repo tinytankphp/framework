@@ -118,6 +118,8 @@ final class QueryTest extends FrameworkTestCase
         self::assertSame(['page' => 2, 'pages' => 2, 'per_page' => 2, 'total' => 4, 'has_more' => false], array_diff_key($page, ['items' => 1]));
         self::assertTrue($this->query()->paginate('1')['has_more'], 'a page from the URL can be a string');
         self::assertSame([], $this->query()->paginate(9)['items']);
+        self::assertSame([], $this->query()->paginate(PHP_INT_MAX)['items'], 'no overflow computing the offset');
+        self::assertSame([], $this->query()->paginate('99999999999999999999')['items'], 'a huge page number from a URL');
         self::assertSame(1, $this->query()->paginate(-3)['page']);
         self::assertSame([2, 3], [$this->query()->paginate(1, perPage: 3)['pages'], $this->query()->paginate(1, perPage: 3)['per_page']]);
     }

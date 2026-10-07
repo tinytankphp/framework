@@ -218,7 +218,8 @@ final class Query implements \IteratorAggregate, \Countable
         $pages = max(1, (int) ceil($total / $perPage));
 
         return [
-            'items' => array_slice($matching, ($page - 1) * $perPage, $perPage),
+            // Past the last page: no items (checked first, so a huge page number can't overflow the offset).
+            'items' => $page > $pages ? [] : array_slice($matching, ($page - 1) * $perPage, $perPage),
             'page' => $page,
             'pages' => $pages,
             'per_page' => $perPage,

@@ -215,6 +215,7 @@ final class BlogTest extends FrameworkTestCase
         yield 'missing front matter' => [['2026/09/bare/index.md' => 'Just text.'], 'missing YAML front matter'];
         yield 'missing title' => [['2026/09/untitled/index.md' => "---\ndate: 2026-09-01\n---\nx"], 'front matter needs a "title"'];
         yield 'missing date' => [['2026/09/undated/index.md' => "---\ntitle: X\n---\nx"], 'front matter needs a "date" in YYYY-MM-DD format'];
+        yield 'impossible date' => [['2026/09/baddate/index.md' => "---\ntitle: X\ndate: 2026-09-31\n---\nx"], '2026/09/baddate/index.md: "2026-09-31" (line 3) is not a date'];
         yield 'malformed date' => [['2026/09/baddate/index.md' => "---\ntitle: X\ndate: 09/01/2026\n---\nx"], 'front matter needs a "date" in YYYY-MM-DD format'];
         yield 'slug in the default language' => [['2026/09/old/index.md' => "---\ntitle: X\ndate: 2026-09-01\nslug: other\n---\nx"], '2026/09/old/index.md: "slug" is only for translations: in the default language the folder name is the slug, rename the folder instead.'];
         yield 'invalid translated slug' => [['2026/09/alpha/index.it.md' => "---\ntitle: X\nslug: Not Valid\n---\nx"], '2026/09/alpha/index.it.md: "slug" uses lowercase letters, digits and dashes'];

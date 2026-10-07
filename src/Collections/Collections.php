@@ -6,9 +6,10 @@ namespace Starlite\Collections;
 
 use Starlite\Blog\MarkdownParser;
 use Starlite\Cache;
+use Starlite\Content\InvalidDate;
+use Starlite\Content\StrictYaml;
 use Starlite\Query;
 use Starlite\Site;
-use Symfony\Component\Yaml\Yaml;
 
 /**
  * Data collections: structured content beyond blog posts (FAQs, team, products, a sound catalogue…),
@@ -221,10 +222,12 @@ final class Collections
                 [$data, $html, $components] = $markdown->convert($contents, $source);
                 $data ??= [];
             } else {
-                [$data, $html, $components] = [Yaml::parse($contents), '', []];
+                [$data, $html, $components] = [StrictYaml::read($contents), '', []];
             }
         } catch (\Symfony\Component\Yaml\Exception\ParseException | \League\CommonMark\Exception\CommonMarkException $e) {
             throw new \RuntimeException("{$source}: invalid YAML: {$e->getMessage()}", 0, $e);
+        } catch (InvalidDate $e) {
+            throw new \RuntimeException("{$source}: {$e->getMessage()}", 0, $e);
         }
         if (!is_array($data) || ($data !== [] && array_is_list($data))) {
             throw new \RuntimeException("{$source}: the fields must be a YAML mapping (field: value).");

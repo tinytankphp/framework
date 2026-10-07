@@ -25,3 +25,16 @@ test('storage that throws (private mode, quota) does not break the page', async 
     datastar.mergePatch({ volume: 0.7 });
     expect(datastar.getPath('volume')).toBe(0.7);
 });
+
+test('a localStorage that throws when merely read (blocked storage, sandboxed iframes) does not break the page', async () => {
+    const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, get: () => { throw new DOMException('denied', 'SecurityError'); } });
+    try {
+        await expect(starlite.persist(['volume'], { key: 'y' })).resolves.toBeTypeOf('function');
+        datastar.mergePatch({ volume: 0.9 });
+        expect(datastar.getPath('volume')).toBe(0.9);
+    } finally {
+        Object.defineProperty(globalThis, 'localStorage', original);
+    }
+});
+

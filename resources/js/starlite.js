@@ -37,7 +37,7 @@ export const ready = new Promise((resolve) => {
  * @param {{key?: string, storage?: Storage}} [options]
  * @returns {Promise<() => void>} resolves to a function that stops saving
  */
-export async function persist(signals, { key = 'starlite', storage = globalThis.localStorage } = {}) {
+export async function persist(signals, { key = 'starlite', storage = localStorageOrNull() } = {}) {
     const include = signals instanceof RegExp ? signals : pathPattern(signals);
     await ready;
 
@@ -52,7 +52,7 @@ export async function persist(signals, { key = 'starlite', storage = globalThis.
     return effect(() => {
         const values = filtered({ include });
         try {
-            storage.setItem(key, JSON.stringify(values));
+            storage?.setItem(key, JSON.stringify(values));
         } catch {
             // Storage full or unavailable: nothing to save to.
         }
@@ -107,6 +107,18 @@ function pathPattern(paths) {
     const escaped = paths.map((path) => path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 
     return new RegExp(`^(${escaped.join('|')})(\\.|$)`);
+}
+
+/**
+ * The browser's localStorage, or null where merely reading it throws (Safari with storage blocked,
+ * sandboxed iframes): a default parameter is evaluated outside persist()'s own try/catch.
+ */
+function localStorageOrNull() {
+    try {
+        return globalThis.localStorage ?? null;
+    } catch {
+        return null;
+    }
 }
 
 function read(storage, key) {

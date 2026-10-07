@@ -219,6 +219,18 @@ final class FormsTest extends FrameworkTestCase
         self::assertStringNotContainsString(hash('sha256', '203.0.113.7'), $stored, 'not a plain hash either: keyed with APP_SECRET');
     }
 
+    public function testAPackagesSpamCheckWorksFromBootstrap(): void
+    {
+        // config/bootstrap.php adds the "word" check after the forms are built: they're validated
+        // after it, so a form can list it.
+        $app = $this->app(['contact' => ['spam' => ['word' => 'casino']] + self::CONTACT]);
+
+        self::assertStringContainsString('name="word_check"', $app->forms->spamMarkup('contact'));
+        self::assertTrue($app->forms->submit('contact', self::post(self::VALID))->sent);
+        self::assertSame('word: casino', $app->forms->submit('contact', self::post(['message' => 'Best casino deals'] + self::VALID))->spam);
+        self::assertCount(1, $this->sent, 'only the real message');
+    }
+
     public function testConfigurationErrorsAreClear(): void
     {
         foreach ([

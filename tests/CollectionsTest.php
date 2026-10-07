@@ -175,6 +175,7 @@ final class CollectionsTest extends FrameworkTestCase
         yield 'empty string' => [['faq/a.md' => "---\nquestion: ''\norder: 1\n---\n"], 'field "question" must be a non-empty string'];
         yield 'int' => [['faq/a.md' => "---\nquestion: Q\norder: '1'\n---\n"], 'field "order" must be a whole number'];
         yield 'list' => [['faq/a.md' => "---\nquestion: Q\norder: 1\ntags: {a: b}\n---\n"], 'field "tags" must be a list of plain values'];
+        yield 'impossible date' => [['team/a.yaml' => "name: A\njoined: 2026-13-01\nactive: true\n"], 'team/a.yaml: "2026-13-01" (line 2) is not a date'];
         yield 'date' => [['team/a.yaml' => "name: A\njoined: soon\nactive: true\n"], 'team/a.yaml: front matter needs a "joined" in YYYY-MM-DD format.'];
         yield 'bool' => [['team/a.yaml' => "name: A\njoined: 2024-01-01\nactive: yes please\n"], 'field "active" must be true or false'];
         yield 'url' => [['team/a.yaml' => "name: A\njoined: 2024-01-01\nactive: true\nphoto: http://insecure.test/a.png\n"], 'field "photo" must be a /path or an https:// URL'];

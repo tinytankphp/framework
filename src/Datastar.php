@@ -67,7 +67,7 @@ final class Datastar extends AbstractExtension implements GlobalsInterface
      */
     public function get(string $template, array $vars = [], array $options = []): string
     {
-        return $this->action('get', $this->templateUrl($template, $vars), $options);
+        return $this->action('get', $this->templateUrl('GET', $template, $vars), $options);
     }
 
     /**
@@ -76,7 +76,7 @@ final class Datastar extends AbstractExtension implements GlobalsInterface
      */
     public function post(string $template, array $vars = [], array $options = []): string
     {
-        return $this->action('post', $this->templateUrl($template, $vars), $options);
+        return $this->action('post', $this->templateUrl('POST', $template, $vars), $options);
     }
 
     /**
@@ -85,7 +85,7 @@ final class Datastar extends AbstractExtension implements GlobalsInterface
      */
     public function put(string $template, array $vars = [], array $options = []): string
     {
-        return $this->action('put', $this->templateUrl($template, $vars), $options);
+        return $this->action('put', $this->templateUrl('PUT', $template, $vars), $options);
     }
 
     /**
@@ -94,7 +94,7 @@ final class Datastar extends AbstractExtension implements GlobalsInterface
      */
     public function patch(string $template, array $vars = [], array $options = []): string
     {
-        return $this->action('patch', $this->templateUrl($template, $vars), $options);
+        return $this->action('patch', $this->templateUrl('PATCH', $template, $vars), $options);
     }
 
     /**
@@ -103,7 +103,7 @@ final class Datastar extends AbstractExtension implements GlobalsInterface
      */
     public function delete(string $template, array $vars = [], array $options = []): string
     {
-        return $this->action('delete', $this->templateUrl($template, $vars), $options);
+        return $this->action('delete', $this->templateUrl('DELETE', $template, $vars), $options);
     }
 
     /**
@@ -124,16 +124,28 @@ final class Datastar extends AbstractExtension implements GlobalsInterface
 
     // --- Signed, tamper-proof template config -------------------------------
 
-    /** @param array<string, mixed> $vars */
-    private function templateUrl(string $template, array $vars): string
+    /**
+     * The URL of a template action. The signature covers the HTTP method too: a datastar.post() URL
+     * can't be replayed as a GET (a link, a prefetch), where no CSRF check applies. Signed variables
+     * stay readable by anyone who sees the page, and the URL can be replayed with its own method:
+     * changes that need authorization belong in controllers.
+     *
+     * @param array<string, mixed> $vars
+     */
+    private function templateUrl(string $method, string $template, array $vars): string
     {
-        $payload = self::base64url(json_encode(['t' => $template, 'v' => $vars], JSON_THROW_ON_ERROR));
+        $payload = self::base64url(json_encode(['m' => $method, 't' => $template, 'v' => $vars], JSON_THROW_ON_ERROR));
 
         // Prefixed with the current language (/it/datastar), so the partial renders in that language.
         return ($this->site?->prefix() ?? '') . $this->endpoint . '?config=' . $payload . '.' . hash_hmac('sha256', $payload, $this->secret);
     }
 
-    /** @return array{0: string, 1: array<string, mixed>}|null */
+    /**
+     * The method, template and variables of a signed config; null if it was tampered with or comes
+     * from before methods were signed.
+     *
+     * @return array{0: string, 1: string, 2: array<string, mixed>}|null
+     */
     public function decode(string $config): ?array
     {
         $dot = strrpos($config, '.');
@@ -145,11 +157,12 @@ final class Datastar extends AbstractExtension implements GlobalsInterface
             return null;
         }
         $data = json_decode((string) base64_decode(strtr($payload, '-_', '+/')), true);
-        if (!is_array($data) || !is_string($data['t'] ?? null) || !is_array($data['v'] ?? null)) {
+        if (!is_array($data) || !in_array($data['m'] ?? null, ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], true)
+            || !is_string($data['t'] ?? null) || !is_array($data['v'] ?? null)) {
             return null;
         }
 
-        return [$data['t'], $data['v']];
+        return [$data['m'], $data['t'], $data['v']];
     }
 
     private static function base64url(string $data): string
@@ -200,6 +213,12 @@ final class Datastar extends AbstractExtension implements GlobalsInterface
         $this->queue[] = static fn (ServerSentEventGenerator $sse) => $sse->location($uri, $options);
 
         return '';
+    }
+
+    /** Drops queued events: called at the start of each request, so a template that failed halfway leaves nothing behind. */
+    public function reset(): void
+    {
+        $this->queue = [];
     }
 
     /** The queued events (or the whole output, if nothing was queued) as an SSE response. */

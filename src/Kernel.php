@@ -147,6 +147,8 @@ final class Kernel
             (require $root . '/config/bootstrap.php')($app);
         }
         (require $root . '/config/routes.php')($app);
+        // Now that packages and the app have added their spam checks.
+        $app->forms->validate();
 
         return $app;
     }
@@ -570,6 +572,7 @@ final class Kernel
         $this->responseCsp = [];
         $this->noStore = false;
         $this->cdn->reset();
+        $this->datastar->reset();
         $this->seo->reset($this->site->localize($path)); // canonical: /it and /it/ are the same page
         try {
             $response = $this->dispatch($request, $path);
@@ -798,7 +801,11 @@ final class Kernel
         if ($config === null) {
             return $this->error(400, 'Invalid Datastar config.');
         }
-        [$template, $vars] = $config;
+        [$method, $template, $vars] = $config;
+        $request = $this->request();
+        if ($request->getMethod() !== $method && !($method === 'GET' && $request->isMethod('HEAD'))) {
+            return $this->error(405, $this->t('Method not allowed.'), ['Allow' => $method]);
+        }
 
         return $this->stream(str_ends_with($template, '.twig') ? $template : $template . '.twig', $vars);
     }

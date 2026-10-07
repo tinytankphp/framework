@@ -218,6 +218,7 @@ final class PagesTest extends FrameworkTestCase
         yield 'form' => [['x/index.md' => "---\ntitle: X\nform: [contact]\n---\n"], '"form" must be the name of a form in config/forms.php'];
         yield 'data' => [['x/index.md' => "---\ntitle: X\ndata: text\n---\n"], '"data" must be a mapping'];
         yield 'cdn' => [['x/index.md' => "---\ntitle: X\ncdn: no-thanks\n---\n"], '"cdn" is true or false'];
+        yield 'impossible updated' => [['x/index.md' => "---\ntitle: X\nupdated: 2026-04-31\n---\n"], 'x/index.md: "2026-04-31" (line 3) is not a date'];
         yield 'updated' => [['x/index.md' => "---\ntitle: X\nupdated: soon\n---\n"], 'front matter needs a "updated" in YYYY-MM-DD format'];
         yield 'language' => [['x/index.fr.md' => "---\ntitle: X\n---\n"], 'pages/x/index.fr.md: language "fr" is not configured'];
         yield 'default code' => [['x/index.en.md' => "---\ntitle: X\n---\n"], 'pages/x/index.en.md: the default language (en) is index.md'];

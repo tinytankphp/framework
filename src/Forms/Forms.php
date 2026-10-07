@@ -75,8 +75,16 @@ final class Forms
 
             return new RateLimit($limit, $window, $dataDir . '/rate-limits', $secret, $clock, $t);
         });
-        foreach ($forms as $form) {
-            $this->checks($form); // unknown check names and bad options fail at boot
+    }
+
+    /**
+     * Checks every form's spam checks: unknown names and bad options fail at boot. Called by
+     * Kernel::boot() after config/bootstrap.php, where packages add their own checks (addSpamCheck()).
+     */
+    public function validate(): void
+    {
+        foreach ($this->forms as $form) {
+            $this->checks($form);
         }
     }
 

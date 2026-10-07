@@ -83,7 +83,7 @@ final class MarkdownParser
         ]);
         $environment->addExtension(new CommonMarkCoreExtension());
         $environment->addExtension(new GithubFlavoredMarkdownExtension());
-        $environment->addExtension(new FrontMatterExtension());
+        $environment->addExtension(new FrontMatterExtension(new \Starlite\Content\StrictYaml()));
         $environment->addExtension(new HeadingPermalinkExtension());
         $environment->addExtension(new ExternalLinkExtension());
         $environment->addEventListener(DocumentParsedEvent::class, $this->rewriteRelativeUrls(...));
@@ -221,8 +221,8 @@ final class MarkdownParser
             $reason = $e->getPrevious()?->getMessage() ?? $e->getMessage();
             throw new \RuntimeException("{$source}: invalid YAML front matter: {$reason} (values containing \": \" need quotes)", 0, $e);
         } catch (\RuntimeException $e) {
-            // Thrown from the component parser and renderer, inside CommonMark: name the file.
-            if (!$e instanceof ComponentSyntaxError) {
+            // Thrown from the component parser and renderer, or the front matter's dates, inside CommonMark: name the file.
+            if (!$e instanceof ComponentSyntaxError && !$e instanceof \Starlite\Content\InvalidDate) {
                 throw $e;
             }
             throw new \RuntimeException("{$source}: {$e->getMessage()}", 0, $e);
@@ -297,7 +297,8 @@ final class MarkdownParser
         if ($value instanceof \DateTimeInterface) {
             return $value->format('Y-m-d');
         }
-        if (is_string($value) && ($date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value)) !== false) {
+        // Exactly YYYY-MM-DD, and a real day: PHP would read 2026-02-30 as March 2 and 2026-2-3 as February 3.
+        if (is_string($value) && ($date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value)) !== false && $date->format('Y-m-d') === $value) {
             return $date->format('Y-m-d');
         }
 
