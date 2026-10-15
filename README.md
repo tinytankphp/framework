@@ -1,3 +1,7 @@
+<p align="center">
+  <a href="https://tinytank.dev/"><img src="https://docs.tinytank.dev/logo-full.svg" alt="TinyTank" width="240"></a>
+</p>
+
 # TinyTank framework
 
 The core of [TinyTank](https://tinytank.dev/): a tiny, database-free PHP
