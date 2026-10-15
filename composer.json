@@ -1,6 +1,6 @@
 {
     "name": "tinytank/framework",
-    "description": "Starlite: a tiny, database-free PHP micro framework for static-like dynamic sites (Datastar, Symfony Routing, Twig, Markdown blog, translations, SEO), compiled for Opcache.",
+    "description": "TinyTank: a tiny, database-free PHP micro framework for static-like dynamic sites (Datastar, Symfony Routing, Twig, Markdown blog, translations, SEO), compiled for Opcache.",
     "type": "library",
     "license": "MIT",
     "keywords": [
@@ -12,11 +12,11 @@
         "blog",
         "opcache"
     ],
-    "homepage": "https://lab909.github.io/starlite-framework-docs/",
+    "homepage": "https://tinytank.dev/",
     "support": {
-        "docs": "https://lab909.github.io/starlite-framework-docs/",
-        "source": "https://github.com/lab909/starlite-framework",
-        "issues": "https://github.com/lab909/starlite-framework/issues"
+        "docs": "https://tinytank.dev/",
+        "source": "https://github.com/tinytankphp/framework",
+        "issues": "https://github.com/tinytankphp/framework/issues"
     },
     "require": {
         "php": ">=8.4",
@@ -49,16 +49,16 @@
     "suggest": {
         "ext-gd": "Responsive images (GD or Imagick, with WebP; AVIF where available)",
         "ext-imagick": "Responsive images (Imagick or GD), used when both are installed",
-        "phpunit/phpunit": "For Starlite\\Testing\\KernelTestCase in your app's tests"
+        "phpunit/phpunit": "For TinyTank\\Testing\\KernelTestCase in your app's tests"
     },
     "autoload": {
         "psr-4": {
-            "Starlite\\": "src/"
+            "TinyTank\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Starlite\\Tests\\": "tests/"
+            "TinyTank\\Tests\\": "tests/"
         }
     },
     "extra": {

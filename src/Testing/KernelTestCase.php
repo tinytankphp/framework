@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Testing;
+namespace TinyTank\Testing;
 
 use PHPUnit\Framework\TestCase;
-use Starlite\Kernel;
+use TinyTank\Kernel;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Base class for tests that drive a Starlite app through Kernel::handle(), so no web server is
+ * Base class for tests that drive a TinyTank app through Kernel::handle(), so no web server is
  * needed: boot the app, send requests, read any response body (including Datastar streams) and the
  * log, and use throw-away directories.
  *
@@ -115,7 +115,7 @@ abstract class KernelTestCase extends TestCase
     /** A fresh directory, deleted after the test. */
     protected function tempDir(string $name = 'tmp'): string
     {
-        $dir = sys_get_temp_dir() . '/starlite-test-' . bin2hex(random_bytes(6)) . '-' . $name;
+        $dir = sys_get_temp_dir() . '/tinytank-test-' . bin2hex(random_bytes(6)) . '-' . $name;
         mkdir($dir, 0777, true);
         $this->tempDirs[] = $dir;
 

@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests;
+namespace TinyTank\Tests;
 
-use Starlite\Cdn\BunnyPurger;
-use Starlite\Cdn\Cdn;
-use Starlite\Cdn\CloudflarePurger;
-use Starlite\Cdn\CommandPurger;
-use Starlite\Cdn\Purger;
-use Starlite\Console\CdnPurgeCommand;
-use Starlite\Kernel;
+use TinyTank\Cdn\BunnyPurger;
+use TinyTank\Cdn\Cdn;
+use TinyTank\Cdn\CloudflarePurger;
+use TinyTank\Cdn\CommandPurger;
+use TinyTank\Cdn\Purger;
+use TinyTank\Console\CdnPurgeCommand;
+use TinyTank\Kernel;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\HttpFoundation\Response;

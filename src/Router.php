@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite;
+namespace TinyTank;
 
 use Symfony\Component\Routing\Generator\CompiledUrlGenerator;
 use Symfony\Component\Routing\Generator\Dumper\CompiledUrlGeneratorDumper;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Log;
+namespace TinyTank\Log;
 
 use Monolog\Handler\HandlerInterface;
 use Monolog\Handler\SymfonyMailerHandler;

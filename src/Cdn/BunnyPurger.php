@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Cdn;
+namespace TinyTank\Cdn;
 
 /**
  * Bunny CDN (https://docs.bunny.net/reference): purges a pull zone, or single URLs, with the pull

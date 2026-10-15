@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Forms;
+namespace TinyTank\Forms;
 
 /**
  * One form from config/forms.php, and the validation of what a visitor sent.

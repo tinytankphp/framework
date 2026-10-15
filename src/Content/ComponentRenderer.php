@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Content;
+namespace TinyTank\Content;
 
 use League\CommonMark\Node\Node;
 use League\CommonMark\Renderer\ChildNodeRendererInterface;
@@ -15,7 +15,7 @@ use League\CommonMark\Renderer\NodeRendererInterface;
  */
 final class ComponentRenderer implements NodeRendererInterface
 {
-    public const PLACEHOLDER = '<!--starlite-component:%d-->';
+    public const PLACEHOLDER = '<!--tinytank-component:%d-->';
 
     /** @param \Closure(Component): int $register records a component, returns its index */
     public function __construct(private readonly \Closure $register)

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Images;
+namespace TinyTank\Images;
 
 use Intervention\Image\Encoders\AvifEncoder;
 use Intervention\Image\Encoders\JpegEncoder;

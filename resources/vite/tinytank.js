@@ -1,13 +1,13 @@
-// Starlite's Vite integration. Lives in the framework so fixes reach every clone; the app's
+// TinyTank's Vite integration. Lives in the framework so fixes reach every clone; the app's
 // vite.config.js only lists its plugins and entry points:
 //
-//   import starlite from './vendor/starlite/framework/resources/vite/starlite.js';
-//   export default defineConfig({ plugins: [tailwindcss(), starlite()] });
+//   import tinytank from './vendor/tinytank/framework/resources/vite/tinytank.js';
+//   export default defineConfig({ plugins: [tailwindcss(), tinytank()] });
 //
 // It provides:
 // - entry points: resources/js/app.js plus every resources/js/pages/*.js (one bundle per page or feature)
 // - import aliases: 'datastar' (the Datastar client shipped with the framework, matching its PHP SDK)
-//   and 'starlite' (browser helpers: ready, persist, publicConfig; see resources/js/starlite.js)
+//   and 'tinytank' (browser helpers: ready, persist, publicConfig; see resources/js/tinytank.js)
 // - build: output to public/build with a manifest (read by src/Vite.php) and source maps
 // - dev server: DDEV-aware origin/CORS on port 5173, and var/vite.hot so PHP points pages at it
 // - full page reloads when Twig templates, Markdown content or translations change, and a restart
@@ -38,14 +38,14 @@ function defaultInput() {
  * @param {string[]} [options.input]  entry points; default: resources/js/app.js and resources/js/pages/*.js
  * @param {RegExp[]} [options.reload] extra file patterns that should reload the page in development
  */
-export default function starlite({ input = defaultInput(), reload = [] } = {}) {
+export default function tinytank({ input = defaultInput(), reload = [] } = {}) {
     // In DDEV the dev server is exposed on https://<project>.ddev.site:5173 (see .ddev/config.yaml).
     const origin = process.env.DDEV_PRIMARY_URL ? `${process.env.DDEV_PRIMARY_URL}:5173` : 'http://localhost:5173';
     const reloadPatterns = [/\.(twig|md)$/, /\/translations\/[^/]+\.php$/, ...reload];
 
     return [
         {
-            name: 'starlite:config',
+            name: 'tinytank:config',
             config(user, { command }) {
                 const server = user.server ?? {};
                 const build = user.build ?? {};
@@ -61,7 +61,7 @@ export default function starlite({ input = defaultInput(), reload = [] } = {}) {
                     resolve: {
                         alias: {
                             datastar: FRAMEWORK_JS + 'datastar.js',
-                            starlite: FRAMEWORK_JS + 'starlite.js',
+                            tinytank: FRAMEWORK_JS + 'tinytank.js',
                         },
                     },
                     publicDir: user.publicDir ?? false,
@@ -93,7 +93,7 @@ export default function starlite({ input = defaultInput(), reload = [] } = {}) {
             },
         },
         {
-            name: 'starlite:serve',
+            name: 'tinytank:serve',
             apply: 'serve',
             configureServer(server) {
                 // Tells PHP (src/Vite.php, debug mode only) where the dev server is.

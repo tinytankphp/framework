@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests;
+namespace TinyTank\Tests;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Blog;
+namespace TinyTank\Blog;
 
-use Starlite\Content\AssetResponse;
-use Starlite\Controller;
+use TinyTank\Content\AssetResponse;
+use TinyTank\Controller;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

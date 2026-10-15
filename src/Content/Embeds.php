@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Content;
+namespace TinyTank\Content;
 
 /**
  * Privacy-friendly video embeds, behind the default `::youtube{id="…"}` and `::vimeo{id="…"}`
@@ -198,7 +198,7 @@ final class Embeds
     private static function download(string $url): ?string
     {
         $context = stream_context_create([
-            'http' => ['timeout' => 5, 'ignore_errors' => false, 'header' => "User-Agent: Starlite\r\n"],
+            'http' => ['timeout' => 5, 'ignore_errors' => false, 'header' => "User-Agent: TinyTank\r\n"],
             'ssl' => ['verify_peer' => true, 'verify_peer_name' => true],
         ]);
         $body = @file_get_contents($url, false, $context);

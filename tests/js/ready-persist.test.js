@@ -7,22 +7,22 @@
 import { beforeAll, expect, test } from 'vitest';
 
 let datastar;
-let starlite;
+let tinytank;
 
 beforeAll(async () => {
     localStorage.setItem('demo', JSON.stringify({ _tone: { volume: 0.2, playing: true }, injected: 'x' }));
     document.body.innerHTML = '<div data-signals="{_tone: {volume: 0.5, playing: false}}"><span id="out" data-text="$_tone.volume"></span></div>';
     datastar = await import('datastar');
-    starlite = await import('../../resources/js/starlite.js');
+    tinytank = await import('../../resources/js/tinytank.js');
 });
 
 test('ready resolves once Datastar has applied the page, even for a module loaded late', async () => {
-    await starlite.ready;
+    await tinytank.ready;
     expect(datastar.getPath('_tone.volume')).toBe(0.5);
 });
 
 test('persist restores only the listed signals, over the page defaults', async () => {
-    await starlite.persist(['_tone.volume'], { key: 'demo' });
+    await tinytank.persist(['_tone.volume'], { key: 'demo' });
 
     expect(datastar.getPath('_tone.volume')).toBe(0.2);
     expect(datastar.getPath('_tone.playing')).toBe(false); // stored, but not listed
@@ -38,7 +38,7 @@ test('persist saves every change of the listed signals, and only those', () => {
 
 test('a pattern selects signals too', async () => {
     datastar.mergePatch({ _mixer: { rain: 1, wind: 2 }, other: 3 });
-    await starlite.persist(/^_mixer\./, { key: 'mixer' });
+    await tinytank.persist(/^_mixer\./, { key: 'mixer' });
 
     expect(JSON.parse(localStorage.getItem('mixer'))).toEqual({ _mixer: { rain: 1, wind: 2 } });
 });

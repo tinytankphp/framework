@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
-// Tests for resources/js (the 'starlite' helpers) against the real Datastar client, in a simulated DOM.
+// Tests for resources/js (the 'tinytank' helpers) against the real Datastar client, in a simulated DOM.
 // Each test file runs in its own environment: Datastar keeps its signals in module-level state.
 export default defineConfig({
     resolve: {

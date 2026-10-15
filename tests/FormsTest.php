@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests;
+namespace TinyTank\Tests;
 
-use Starlite\Forms\Form;
-use Starlite\Forms\Spam\Timing;
-use Starlite\Kernel;
+use TinyTank\Forms\Form;
+use TinyTank\Forms\Spam\Timing;
+use TinyTank\Kernel;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Mailer\Envelope;
 use Symfony\Component\Mailer\SentMessage;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Blog;
+namespace TinyTank\Blog;
 
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Event\DocumentParsedEvent;
@@ -14,10 +14,10 @@ use League\CommonMark\Extension\FrontMatter\Output\RenderedContentWithFrontMatte
 use League\CommonMark\Extension\GithubFlavoredMarkdownExtension;
 use League\CommonMark\Extension\HeadingPermalink\HeadingPermalinkExtension;
 use League\CommonMark\MarkdownConverter;
-use Starlite\Content\Component;
-use Starlite\Content\ComponentRenderer;
-use Starlite\Content\ComponentStartParser;
-use Starlite\Content\ComponentSyntaxError;
+use TinyTank\Content\Component;
+use TinyTank\Content\ComponentRenderer;
+use TinyTank\Content\ComponentStartParser;
+use TinyTank\Content\ComponentSyntaxError;
 
 /**
  * Turns a post folder's index.md (YAML front matter + Markdown) into a post array.
@@ -58,7 +58,7 @@ final class MarkdownParser
      *        checks a component's name and arguments when content compiles (the template exists, the
      *        arguments a default component needs…): an error message, or null if it's fine
      */
-    public function __construct(private readonly ?\Closure $componentCheck = null, ?\Starlite\Images\Images $images = null)
+    public function __construct(private readonly ?\Closure $componentCheck = null, ?\TinyTank\Images\Images $images = null)
     {
         $environment = new Environment([
             // Raw HTML in Markdown is escaped and javascript:/data: links are dropped,
@@ -83,7 +83,7 @@ final class MarkdownParser
         ]);
         $environment->addExtension(new CommonMarkCoreExtension());
         $environment->addExtension(new GithubFlavoredMarkdownExtension());
-        $environment->addExtension(new FrontMatterExtension(new \Starlite\Content\StrictYaml()));
+        $environment->addExtension(new FrontMatterExtension(new \TinyTank\Content\StrictYaml()));
         $environment->addExtension(new HeadingPermalinkExtension());
         $environment->addExtension(new ExternalLinkExtension());
         $environment->addEventListener(DocumentParsedEvent::class, $this->rewriteRelativeUrls(...));
@@ -92,7 +92,7 @@ final class MarkdownParser
         $environment->addRenderer(Component::class, new ComponentRenderer($this->registerComponent(...)));
         if ($images !== null) {
             // Images from the post's folder: a <picture> with responsive versions.
-            $environment->addRenderer(\League\CommonMark\Extension\CommonMark\Node\Inline\Image::class, new \Starlite\Images\ImageRenderer($images), 10);
+            $environment->addRenderer(\League\CommonMark\Extension\CommonMark\Node\Inline\Image::class, new \TinyTank\Images\ImageRenderer($images), 10);
         }
 
         $this->converter = new MarkdownConverter($environment);
@@ -100,8 +100,8 @@ final class MarkdownParser
 
     /**
      * @param string $path     the post's index.md
-     * @param string $source   path shown in error messages, e.g. "2026/09/hello-starlite/index.md"
-     * @param string    $assetUrl public URL of the post folder's files, e.g. "/media/blog/hello-starlite"
+     * @param string $source   path shown in error messages, e.g. "2026/09/hello-tinytank/index.md"
+     * @param string    $assetUrl public URL of the post folder's files, e.g. "/media/blog/hello-tinytank"
      * @param Post|null $original the default-language version, for a translation: date, updated,
      *                            image and tags it omits are inherited from there
      *
@@ -222,7 +222,7 @@ final class MarkdownParser
             throw new \RuntimeException("{$source}: invalid YAML front matter: {$reason} (values containing \": \" need quotes)", 0, $e);
         } catch (\RuntimeException $e) {
             // Thrown from the component parser and renderer, or the front matter's dates, inside CommonMark: name the file.
-            if (!$e instanceof ComponentSyntaxError && !$e instanceof \Starlite\Content\InvalidDate) {
+            if (!$e instanceof ComponentSyntaxError && !$e instanceof \TinyTank\Content\InvalidDate) {
                 throw $e;
             }
             throw new \RuntimeException("{$source}: {$e->getMessage()}", 0, $e);
@@ -270,7 +270,7 @@ final class MarkdownParser
                 throw new \RuntimeException("{$source}: \"{$url}\" is not a publishable file type (" . implode(', ', array_keys(Blog::ASSET_TYPES)) . ').');
             }
             $node->setUrl($assetUrl . '/' . $path);
-            $node->data->set(\Starlite\Images\ImageRenderer::SOURCE, $dir . '/' . $path);
+            $node->data->set(\TinyTank\Images\ImageRenderer::SOURCE, $dir . '/' . $path);
         }
     }
 

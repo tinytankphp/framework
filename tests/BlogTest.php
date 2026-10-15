@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests;
+namespace TinyTank\Tests;
 
 use PHPUnit\Framework\Attributes\DataProvider;
-use Starlite\Blog\Blog;
-use Starlite\Site;
+use TinyTank\Blog\Blog;
+use TinyTank\Site;
 
 final class BlogTest extends FrameworkTestCase
 {
@@ -76,7 +76,7 @@ final class BlogTest extends FrameworkTestCase
         self::assertSame('2026-09-10', $post['date']);
         self::assertSame('2026-09-12', $post['updated']);
         self::assertSame('/media/blog/alpha/cover.png', $post['image']);
-        self::assertSame(['php', 'starlite'], $post['tags'], 'tags are lowercased');
+        self::assertSame(['php', 'tinytank'], $post['tags'], 'tags are lowercased');
         self::assertSame('en', $post['language']);
         self::assertSame('2026/09/alpha/index.md', $post['source']);
     }
@@ -97,7 +97,7 @@ final class BlogTest extends FrameworkTestCase
         self::assertSame('2026-09-10', $post['date']);
         self::assertSame('2026-09-12', $post['updated']);
         self::assertSame('/media/blog/alpha/cover.png', $post['image']);
-        self::assertSame(['php', 'starlite'], $post['tags']);
+        self::assertSame(['php', 'tinytank'], $post['tags']);
         self::assertSame('it', $post['language']);
     }
 
@@ -163,8 +163,8 @@ final class BlogTest extends FrameworkTestCase
         self::assertSame(['beta'], array_column($en->search('searching')->all(), 'slug'), 'matches the summary');
         self::assertSame(['alpha'], array_column($en->tag('php')->all(), 'slug'));
         self::assertSame([], $blog->query()->language('it')->search('beta')->all());
-        self::assertEquals(['guide' => 1, 'php' => 1, 'starlite' => 1], $en->countBy('tags'), 'counts per tag; ties in any order');
-        self::assertEquals(['guida' => 1, 'php' => 1, 'starlite' => 1], $blog->query()->language('it')->countBy('tags'));
+        self::assertEquals(['guide' => 1, 'php' => 1, 'tinytank' => 1], $en->countBy('tags'), 'counts per tag; ties in any order');
+        self::assertEquals(['guida' => 1, 'php' => 1, 'tinytank' => 1], $blog->query()->language('it')->countBy('tags'));
 
         $page2 = $en->paginate(2);
         self::assertSame(['alpha'], array_column($page2['items'], 'slug'));

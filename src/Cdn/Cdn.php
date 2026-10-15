@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Cdn;
+namespace TinyTank\Cdn;
 
 use Symfony\Component\HttpFoundation\Request;
 

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests;
+namespace TinyTank\Tests;
 
-use Starlite\Theme;
+use TinyTank\Theme;
 
 final class ThemeTest extends FrameworkTestCase
 {
@@ -17,11 +17,11 @@ final class ThemeTest extends FrameworkTestCase
 
     public function testTheScriptReadsTheKeyAndSignalThatThemeSaves(): void
     {
-        // resources/js/starlite.js: persist(['_theme'], { key: 'starlite-theme' }).
-        $js = (string) file_get_contents(dirname(__DIR__) . '/resources/js/starlite.js');
+        // resources/js/tinytank.js: persist(['_theme'], { key: 'tinytank-theme' }).
+        $js = (string) file_get_contents(dirname(__DIR__) . '/resources/js/tinytank.js');
 
         self::assertStringContainsString("persist(['" . Theme::SIGNAL . "'], { key: '" . Theme::STORAGE_KEY . "' })", $js);
-        self::assertStringContainsString('localStorage.getItem("starlite-theme")', Theme::SCRIPT);
+        self::assertStringContainsString('localStorage.getItem("tinytank-theme")', Theme::SCRIPT);
         self::assertStringContainsString('._theme}', Theme::SCRIPT);
     }
 

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Seo;
+namespace TinyTank\Seo;
 
-use Starlite\Controller;
+use TinyTank\Controller;
 use Symfony\Component\HttpFoundation\Response;
 
 /** /robots.txt: allows everything and points crawlers at the sitemap (absolute URL from APP_URL). */

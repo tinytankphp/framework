@@ -35,7 +35,7 @@ jobs:
           node-version: '24'
           cache: npm
 
-      - name: JavaScript tests (the 'starlite' browser helpers)
+      - name: JavaScript tests (the 'tinytank' browser helpers)
         run: |
           npm ci
           npm test

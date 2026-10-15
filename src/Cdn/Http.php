@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Cdn;
+namespace TinyTank\Cdn;
 
 /**
  * The HTTP requests purgers make to CDN APIs, with PHP's own streams (no HTTP client needed). Tests
@@ -17,7 +17,7 @@ final class Http
      */
     public static function send(string $method, string $url, array $headers = [], ?string $body = null): array
     {
-        $lines = ['User-Agent: Starlite'];
+        $lines = ['User-Agent: TinyTank'];
         foreach ($headers as $name => $value) {
             $lines[] = "{$name}: {$value}";
         }

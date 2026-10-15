@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Content;
+namespace TinyTank\Content;
 
-use Starlite\Blog\Blog;
-use Starlite\Images\Images;
-use Starlite\Kernel;
+use TinyTank\Blog\Blog;
+use TinyTank\Images\Images;
+use TinyTank\Kernel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
 

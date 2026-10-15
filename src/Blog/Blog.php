@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Blog;
+namespace TinyTank\Blog;
 
-use Starlite\Cache;
-use Starlite\Images\Images;
-use Starlite\Query;
-use Starlite\Site;
+use TinyTank\Cache;
+use TinyTank\Images\Images;
+use TinyTank\Query;
+use TinyTank\Site;
 
 /**
  * File-based blog. Each post is a folder named after its slug, holding one Markdown file per
  * language and the files (images, downloads) they share:
  *
- *   content/blog/2026/09/hello-starlite/index.md     default language, filed by publication month
- *   content/blog/2026/09/hello-starlite/index.it.md  Italian version → /it/blog/hello-starlite
- *   content/blog/2026/09/hello-starlite/cover.jpg    served as /media/blog/hello-starlite/cover.jpg
+ *   content/blog/2026/09/hello-tinytank/index.md     default language, filed by publication month
+ *   content/blog/2026/09/hello-tinytank/index.it.md  Italian version → /it/blog/hello-tinytank
+ *   content/blog/2026/09/hello-tinytank/cover.jpg    served as /media/blog/hello-tinytank/cover.jpg
  *   content/blog/drafts/next-post/index.md           draft: only visible with APP_DEBUG=1
  *
- * Query posts with `posts()` (Twig) or `$app->posts()` (PHP): see Starlite\Query. A post without
+ * Query posts with `posts()` (Twig) or `$app->posts()` (PHP): see TinyTank\Query. A post without
  * a version in a language doesn't exist there: not listed, not searchable, 404.
  *
  * Without APP_DEBUG the parsed posts (HTML included) are compiled once into var/cache/blog.php,
@@ -62,7 +62,7 @@ final class Blog
         /** Base URL of the files' public URLs: '' (this site) or a CDN, MEDIA_URL */
         private readonly string $mediaUrl = '',
         /** Responsive versions of images, and originals without metadata (published by publishAssets()) */
-        private readonly ?\Starlite\Images\Images $images = null,
+        private readonly ?\TinyTank\Images\Images $images = null,
     ) {
     }
 
@@ -231,7 +231,7 @@ final class Blog
     }
 
     /**
-     * Every post folder, as "2026/09/hello-starlite" => [slug, is draft, "2026-09" or null, language => file],
+     * Every post folder, as "2026/09/hello-tinytank" => [slug, is draft, "2026-09" or null, language => file],
      * with the default language's file first. Markdown files anywhere else, or for a language that
      * isn't configured, are an error rather than silently skipped, so nothing goes unnoticed.
      *

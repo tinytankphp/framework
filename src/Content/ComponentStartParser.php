@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Content;
+namespace TinyTank\Content;
 
 use League\CommonMark\Parser\Block\AbstractBlockContinueParser;
 use League\CommonMark\Parser\Block\BlockContinue;
@@ -72,7 +72,7 @@ final class ComponentStartParser implements BlockStartParserInterface
             }
             [$all, $key, $value] = $m;
             if ($key === 'entry') {
-                throw new ComponentSyntaxError("\"{$markup}\": \"entry\" is the post or page the component is in, set by Starlite.");
+                throw new ComponentSyntaxError("\"{$markup}\": \"entry\" is the post or page the component is in, set by TinyTank.");
             }
             if (array_key_exists($key, $args)) {
                 throw new ComponentSyntaxError("\"{$markup}\": \"{$key}\" is given twice.");

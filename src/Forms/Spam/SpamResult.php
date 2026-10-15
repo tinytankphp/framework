@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Forms\Spam;
+namespace TinyTank\Forms\Spam;
 
 /**
  * Why a submission was rejected. Without a message the visitor sees "sent" as usual, so a bot learns

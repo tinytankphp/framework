@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Forms;
+namespace TinyTank\Forms;
 
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
-use Starlite\Forms\Spam\Honeypot;
-use Starlite\Forms\Spam\MaxLinks;
-use Starlite\Forms\Spam\RateLimit;
-use Starlite\Forms\Spam\SpamCheck;
-use Starlite\Forms\Spam\Timing;
+use TinyTank\Forms\Spam\Honeypot;
+use TinyTank\Forms\Spam\MaxLinks;
+use TinyTank\Forms\Spam\RateLimit;
+use TinyTank\Forms\Spam\SpamCheck;
+use TinyTank\Forms\Spam\Timing;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Mailer\Transport;

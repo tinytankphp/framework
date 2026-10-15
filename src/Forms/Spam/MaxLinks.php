@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Forms\Spam;
+namespace TinyTank\Forms\Spam;
 
-use Starlite\Forms\Form;
+use TinyTank\Forms\Form;
 use Symfony\Component\HttpFoundation\Request;
 
 /** Most spam is links: more than `$max` in the whole message is refused, with a message a person can act on. */

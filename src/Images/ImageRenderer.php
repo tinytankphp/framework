@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Images;
+namespace TinyTank\Images;
 
 use League\CommonMark\Extension\CommonMark\Node\Inline\Image;
 use League\CommonMark\Extension\CommonMark\Renderer\Inline\ImageRenderer as CommonMarkImageRenderer;
@@ -19,7 +19,7 @@ use League\CommonMark\Renderer\ChildNodeRendererInterface;
 final class ImageRenderer implements \League\CommonMark\Renderer\NodeRendererInterface
 {
     /** Node data key MarkdownParser sets to the image's file, for the images of the post's own folder. */
-    public const SOURCE = 'starlite_source';
+    public const SOURCE = 'tinytank_source';
 
     private readonly CommonMarkImageRenderer $fallback;
 

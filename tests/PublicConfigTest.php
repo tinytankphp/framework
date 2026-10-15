@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests;
+namespace TinyTank\Tests;
 
-use Starlite\PublicConfig;
+use TinyTank\PublicConfig;
 
 final class PublicConfigTest extends FrameworkTestCase
 {
@@ -12,13 +12,13 @@ final class PublicConfigTest extends FrameworkTestCase
     {
         $html = $this->body($this->request($this->kernel(overrides: ['public' => ['media' => 'https://cdn.example.test/']]), '/'));
 
-        self::assertStringContainsString('<script type="application/json" id="starlite-config">{"media":"https://cdn.example.test/"}</script>', $html);
+        self::assertStringContainsString('<script type="application/json" id="tinytank-config">{"media":"https://cdn.example.test/"}</script>', $html);
         self::assertStringNotContainsString((string) getenv('APP_SECRET'), $html);
     }
 
     public function testNothingIsPrintedWithoutPublicValues(): void
     {
-        self::assertStringNotContainsString('starlite-config', $this->body($this->request($this->kernel(), '/')));
+        self::assertStringNotContainsString('tinytank-config', $this->body($this->request($this->kernel(), '/')));
     }
 
     public function testValuesCannotCloseTheScriptElement(): void

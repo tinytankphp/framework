@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests;
+namespace TinyTank\Tests;
 
 use Monolog\Logger;
-use Starlite\Log\Log;
+use TinyTank\Log\Log;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Mailer\Envelope;
 use Symfony\Component\Mailer\SentMessage;

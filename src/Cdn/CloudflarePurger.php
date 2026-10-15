@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Cdn;
+namespace TinyTank\Cdn;
 
 /**
  * Cloudflare (https://developers.cloudflare.com/cache/how-to/purge-cache/): a zone ID and an

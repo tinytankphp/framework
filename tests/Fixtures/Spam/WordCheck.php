@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests\Fixtures\Spam;
+namespace TinyTank\Tests\Fixtures\Spam;
 
-use Starlite\Forms\Form;
-use Starlite\Forms\Spam\SpamCheck;
-use Starlite\Forms\Spam\SpamResult;
+use TinyTank\Forms\Form;
+use TinyTank\Forms\Spam\SpamCheck;
+use TinyTank\Forms\Spam\SpamResult;
 use Symfony\Component\HttpFoundation\Request;
 
 /** A custom spam check, added in the fixture's config/bootstrap.php as a package would: rejects a word. */

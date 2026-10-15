@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite;
+namespace TinyTank;
 
 /**
  * Content Security Policy: the browser only loads scripts, styles, fonts, images, frames… from the

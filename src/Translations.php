@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite;
+namespace TinyTank;
 
 use Symfony\Component\Translation\Formatter\IntlFormatter;
 use Symfony\Component\Translation\Loader\PhpFileLoader;

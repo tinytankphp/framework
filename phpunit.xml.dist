@@ -9,7 +9,7 @@
          displayDetailsOnTestsThatTriggerWarnings="true"
          beStrictAboutOutputDuringTests="true">
     <testsuites>
-        <!-- Starlite itself, against a fixture project (tests/data/project) and fixture content. -->
+        <!-- TinyTank itself, against a fixture project (tests/data/project) and fixture content. -->
         <testsuite name="framework">
             <directory>tests</directory>
         </testsuite>

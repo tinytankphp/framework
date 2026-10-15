@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite;
+namespace TinyTank;
 
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
@@ -11,13 +11,13 @@ use Twig\TwigFunction;
  * Config values the browser may read: only what config/app.php lists under `public`.
  *
  * `{{ public_config() }}` prints them as a JSON data block, read in JavaScript with `publicConfig()`
- * from the 'starlite' module. It's an allowlist: nothing else from the config ever reaches the page,
+ * from the 'tinytank' module. It's an allowlist: nothing else from the config ever reaches the page,
  * and a value containing APP_SECRET is refused outright. A data block isn't executed, so it needs no
  * Content Security Policy hash, and it's the same for every visitor, so pages stay cacheable.
  */
 final class PublicConfig extends AbstractExtension
 {
-    public const ELEMENT_ID = 'starlite-config';
+    public const ELEMENT_ID = 'tinytank-config';
 
     /** @param array<string, mixed> $values */
     public function __construct(

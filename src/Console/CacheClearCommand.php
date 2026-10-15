@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Console;
+namespace TinyTank\Console;
 
-use Starlite\Blog\Blog;
-use Starlite\Cache;
-use Starlite\Pages\Pages;
+use TinyTank\Blog\Blog;
+use TinyTank\Cache;
+use TinyTank\Pages\Pages;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;

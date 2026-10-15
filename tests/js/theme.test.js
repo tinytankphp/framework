@@ -7,10 +7,10 @@ const media = { matches: true, addEventListener: (_type, listener) => listeners.
 
 beforeAll(async () => {
     window.matchMedia = () => media; // jsdom has no matchMedia: a dark system, switchable below
-    localStorage.setItem('starlite-theme', JSON.stringify({ _theme: 'light' }));
+    localStorage.setItem('tinytank-theme', JSON.stringify({ _theme: 'light' }));
     document.body.innerHTML = '<div data-signals:_theme="\'system\'"></div>';
     datastar = await import('datastar');
-    const { theme } = await import('../../resources/js/starlite.js');
+    const { theme } = await import('../../resources/js/tinytank.js');
     await theme();
 });
 
@@ -24,7 +24,7 @@ test('a new choice is applied and saved in the format the <head> script reads', 
     datastar.mergePatch({ _theme: 'dark' });
 
     expect(document.documentElement.dataset.theme).toBe('dark');
-    expect(JSON.parse(localStorage.getItem('starlite-theme'))).toEqual({ _theme: 'dark' });
+    expect(JSON.parse(localStorage.getItem('tinytank-theme'))).toEqual({ _theme: 'dark' });
 });
 
 test("'system' follows the operating system as it switches", () => {

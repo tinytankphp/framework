@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-use Starlite\Blog\AssetController;
-use Starlite\Blog\Blog;
-use Starlite\Blog\FeedController;
-use Starlite\Blog\PostSeo;
-use Starlite\Kernel;
-use Starlite\Pages\AssetController as PageAssetController;
-use Starlite\Pages\PageSeo;
-use Starlite\Pages\Pages;
-use Starlite\Seo\RobotsController;
-use Starlite\Seo\SitemapController;
-use Starlite\Tests\Fixtures\Controller\DemoController;
-use Starlite\Tests\Fixtures\Controller\InvokableController;
+use TinyTank\Blog\AssetController;
+use TinyTank\Blog\Blog;
+use TinyTank\Blog\FeedController;
+use TinyTank\Blog\PostSeo;
+use TinyTank\Kernel;
+use TinyTank\Pages\AssetController as PageAssetController;
+use TinyTank\Pages\PageSeo;
+use TinyTank\Pages\Pages;
+use TinyTank\Seo\RobotsController;
+use TinyTank\Seo\SitemapController;
+use TinyTank\Tests\Fixtures\Controller\DemoController;
+use TinyTank\Tests\Fixtures\Controller\InvokableController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 return static function (Kernel $app): void {

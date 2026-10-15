@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Seo;
+namespace TinyTank\Seo;
 
 use Spatie\SchemaOrg\Type;
-use Starlite\Site;
+use TinyTank\Site;
 use Twig\Extension\AbstractExtension;
 use Twig\Extension\GlobalsInterface;
 use Twig\TwigFunction;

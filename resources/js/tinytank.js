@@ -1,7 +1,7 @@
 // Browser helpers for page modules that work alongside Datastar. Import them through the alias the
 // Vite plugin sets up:
 //
-//   import { persist, publicConfig, ready, theme } from 'starlite';
+//   import { persist, publicConfig, ready, theme } from 'tinytank';
 //   import { effect, getPath, mergePatch } from 'datastar';
 //
 // The pattern: Datastar drives the UI through signals; a plain module does the heavy work (audio,
@@ -37,7 +37,7 @@ export const ready = new Promise((resolve) => {
  * @param {{key?: string, storage?: Storage}} [options]
  * @returns {Promise<() => void>} resolves to a function that stops saving
  */
-export async function persist(signals, { key = 'starlite', storage = localStorageOrNull() } = {}) {
+export async function persist(signals, { key = 'tinytank', storage = localStorageOrNull() } = {}) {
     const include = signals instanceof RegExp ? signals : pathPattern(signals);
     await ready;
 
@@ -66,7 +66,7 @@ export async function persist(signals, { key = 'starlite', storage = localStorag
  * @returns {Record<string, unknown>}
  */
 export function publicConfig() {
-    const element = document.getElementById('starlite-config');
+    const element = document.getElementById('tinytank-config');
     if (element === null) {
         return {};
     }
@@ -92,7 +92,7 @@ export function publicConfig() {
 export async function theme() {
     const media = matchMedia('(prefers-color-scheme: dark)');
     // Restored before the first apply(), so the theme set by the <head> script never flickers.
-    await persist(['_theme'], { key: 'starlite-theme' });
+    await persist(['_theme'], { key: 'tinytank-theme' });
 
     const apply = () => {
         const choice = getPath('_theme');

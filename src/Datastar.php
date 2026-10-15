@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite;
+namespace TinyTank;
 
 use starfederation\datastar\events\EventInterface;
 use starfederation\datastar\ServerSentEventGenerator;

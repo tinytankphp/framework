@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests;
+namespace TinyTank\Tests;
 
-use Starlite\Csp;
-use Starlite\Theme;
+use TinyTank\Csp;
+use TinyTank\Theme;
 
 final class CspTest extends FrameworkTestCase
 {

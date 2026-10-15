@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Pages;
+namespace TinyTank\Pages;
 
 use Spatie\SchemaOrg\Schema;
-use Starlite\Seo\Seo;
+use TinyTank\Seo\Seo;
 
 /**
  * Maps a page's front matter onto the page's SEO metadata: title, summary as meta description,

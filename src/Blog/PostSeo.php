@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Blog;
+namespace TinyTank\Blog;
 
 use Spatie\SchemaOrg\Schema;
-use Starlite\Seo\Seo;
+use TinyTank\Seo\Seo;
 
 /**
  * Maps a post's front matter onto the page's SEO metadata:

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Content;
+namespace TinyTank\Content;
 
 use League\CommonMark\Extension\FrontMatter\Data\FrontMatterDataParserInterface;
 use League\CommonMark\Extension\FrontMatter\Exception\InvalidFrontMatterException;

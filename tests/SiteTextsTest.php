@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests;
+namespace TinyTank\Tests;
 
-use Starlite\Site;
+use TinyTank\Site;
 
 final class SiteTextsTest extends FrameworkTestCase
 {
@@ -22,9 +22,9 @@ final class SiteTextsTest extends FrameworkTestCase
 
     public function testOneValueForEveryLanguage(): void
     {
-        $site = self::site(['name' => 'Starlite', 'description' => 'Fast']);
+        $site = self::site(['name' => 'TinyTank', 'description' => 'Fast']);
 
-        self::assertSame(['Starlite', 'Starlite', 'Fast'], [$site->name(), $site->name('it'), $site->description('de')]);
+        self::assertSame(['TinyTank', 'TinyTank', 'Fast'], [$site->name(), $site->name('it'), $site->description('de')]);
         self::assertNull($site->image());
         self::assertNull($site->author('it'));
     }
@@ -32,7 +32,7 @@ final class SiteTextsTest extends FrameworkTestCase
     public function testAValuePerLanguageFollowsTheCurrentLanguage(): void
     {
         $site = self::site([
-            'name' => 'Starlite',
+            'name' => 'TinyTank',
             'description' => ['en' => 'Fast sites', 'it' => 'Siti veloci'],
             'image' => ['en' => '/og.en.png', 'it' => '/og.it.png'],
         ]);
@@ -50,7 +50,7 @@ final class SiteTextsTest extends FrameworkTestCase
     public function testMapsAreChecked(): void
     {
         foreach ([
-            [['name' => ['it' => 'Starlite']], 'site.name: needs a value for the default language (en)'],
+            [['name' => ['it' => 'TinyTank']], 'site.name: needs a value for the default language (en)'],
             [['name' => 'S', 'description' => ['en' => 'x', 'fr' => 'y']], 'site.description: language "fr" is not configured'],
             [['name' => ['en' => ['nested']]], 'site.name.en must be text'],
         ] as [$texts, $message]) {

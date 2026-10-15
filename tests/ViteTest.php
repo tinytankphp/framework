@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests;
+namespace TinyTank\Tests;
 
-use Starlite\Vite;
+use TinyTank\Vite;
 
 final class ViteTest extends FrameworkTestCase
 {

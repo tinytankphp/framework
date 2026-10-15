@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Pages;
+namespace TinyTank\Pages;
 
-use Starlite\Blog\Blog;
-use Starlite\Blog\MarkdownParser;
-use Starlite\Cache;
-use Starlite\Images\Images;
-use Starlite\Query;
-use Starlite\Site;
+use TinyTank\Blog\Blog;
+use TinyTank\Blog\MarkdownParser;
+use TinyTank\Cache;
+use TinyTank\Images\Images;
+use TinyTank\Query;
+use TinyTank\Site;
 
 /**
  * Content pages: one-offs like About, Privacy or Contact (Craft's "singles"), nested like a structure.
@@ -38,7 +38,7 @@ use Starlite\Site;
  * `slug:` it gets its own URL, combined with its parents' translated slugs: about/credits in Italian
  * can be /it/chi-siamo/riconoscimenti. The folder path (`path`) stays the page's identity; `uri` is
  * its URL in that language, and Kernel::path('page', ['path' => 'about'], 'it') writes it.
- * Query pages with `pages()` (see Starlite\Query); a page without a version in a language doesn't
+ * Query pages with `pages()` (see TinyTank\Query); a page without a version in a language doesn't
  * exist there. Compiled into var/cache/pages.php without APP_DEBUG, like the blog.
  *
  * @phpstan-type Page array{slug: string, path: string, uri: string, parent: string, depth: int, language: string, title: string, summary: string, image: ?string, template: ?string, form: ?string, order: ?int, updated: ?string, cdn: bool, data: array<mixed>, html: string, components: list<ComponentCall>, source: string, assets: list<string>}
@@ -71,7 +71,7 @@ final class Pages
         /** Base URL of the files' public URLs: '' (this site) or a CDN, MEDIA_URL */
         private readonly string $mediaUrl = '',
         /** Responsive versions of images, and originals without metadata (published by publishAssets()) */
-        private readonly ?\Starlite\Images\Images $images = null,
+        private readonly ?\TinyTank\Images\Images $images = null,
     ) {
     }
 

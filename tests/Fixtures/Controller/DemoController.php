@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests\Fixtures\Controller;
+namespace TinyTank\Tests\Fixtures\Controller;
 
-use Starlite\Controller;
+use TinyTank\Controller;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
 final class DemoController extends Controller

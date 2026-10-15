@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite;
+namespace TinyTank;
 
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;

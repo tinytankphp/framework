@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests;
+namespace TinyTank\Tests;
 
-use Starlite\Console\Console;
-use Starlite\Tests\Fixtures\Command\GreetCommand;
-use Starlite\Tests\Fixtures\Command\PlainCommand;
+use TinyTank\Console\Console;
+use TinyTank\Tests\Fixtures\Command\GreetCommand;
+use TinyTank\Tests\Fixtures\Command\PlainCommand;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -14,7 +14,7 @@ use Symfony\Component\Console\Tester\CommandTester;
 final class ConsoleTest extends FrameworkTestCase
 {
     private const COMMANDS = __DIR__ . '/Fixtures/Command';
-    private const NAMESPACE = 'Starlite\\Tests\\Fixtures\\Command\\';
+    private const NAMESPACE = 'TinyTank\\Tests\\Fixtures\\Command\\';
 
     // --- Command discovery --------------------------------------------------------
 
@@ -27,7 +27,7 @@ final class ConsoleTest extends FrameworkTestCase
     public function testCommandsNeedingConstructorArgumentsAreRejected(): void
     {
         $this->expectExceptionMessage('commands in src/Command/ are created without arguments; extend AppCommand');
-        Console::discover(__DIR__ . '/Fixtures/BadCommand', 'Starlite\\Tests\\Fixtures\\BadCommand\\');
+        Console::discover(__DIR__ . '/Fixtures/BadCommand', 'TinyTank\\Tests\\Fixtures\\BadCommand\\');
     }
 
     public function testClassNamesMustMatchTheirFiles(): void
@@ -128,7 +128,7 @@ final class ConsoleTest extends FrameworkTestCase
     public function testDeployStopsAtAFailingStep(): void
     {
         $root = $this->project();
-        self::write($root, ['config/bootstrap.php' => '<?php return static function (Starlite\Kernel $app): void {
+        self::write($root, ['config/bootstrap.php' => '<?php return static function (TinyTank\Kernel $app): void {
             $app->addDeployStep("fails", static fn () => false, after: "cache");
         };']);
         $tester = $this->deploy($root, ['--skip' => 'composer', '--opcache' => 'none']);
@@ -161,7 +161,7 @@ final class ConsoleTest extends FrameworkTestCase
     public function testAppStepWithUnknownAnchorIsRejected(): void
     {
         $root = $this->project();
-        self::write($root, ['config/bootstrap.php' => '<?php return static function (Starlite\Kernel $app): void {
+        self::write($root, ['config/bootstrap.php' => '<?php return static function (TinyTank\Kernel $app): void {
             $app->addDeployStep("lost", static fn () => true, before: "nope");
         };']);
         $tester = $this->deploy($root, ['--list-steps' => true]);

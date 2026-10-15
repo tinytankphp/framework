@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Collections;
+namespace TinyTank\Collections;
 
-use Starlite\Blog\MarkdownParser;
+use TinyTank\Blog\MarkdownParser;
 
 /**
  * One collection's definition from config/collections.php, and the validation of its items.
@@ -43,7 +43,7 @@ final class Schema
             throw new \InvalidArgumentException("{$where}: collection names use lowercase letters, digits and underscores (usable as collections.{$name} in Twig).");
         }
         if (in_array($name, Collections::RESERVED, true)) {
-            throw new \InvalidArgumentException("{$where}: \"{$name}\" is reserved (content/{$name}/ belongs to Starlite).");
+            throw new \InvalidArgumentException("{$where}: \"{$name}\" is reserved (content/{$name}/ belongs to TinyTank).");
         }
         $unknown = array_diff(array_keys($config), ['fields', 'sort', 'fallback', 'json']);
         if ($unknown !== []) {
@@ -61,7 +61,7 @@ final class Schema
                 throw new \InvalidArgumentException("{$where}: field names use lowercase letters, digits and underscores.");
             }
             if (in_array($field, self::RESERVED, true)) {
-                throw new \InvalidArgumentException("{$where}: \"{$field}\" is set by Starlite and can't be a field (" . implode(', ', self::RESERVED) . ').');
+                throw new \InvalidArgumentException("{$where}: \"{$field}\" is set by TinyTank and can't be a field (" . implode(', ', self::RESERVED) . ').');
             }
             if (!in_array($type, self::TYPES, true)) {
                 throw new \InvalidArgumentException("{$where}: field \"{$field}\" has unknown type \"{$type}\" (" . implode(', ', self::TYPES) . ', optional with a leading ?).');

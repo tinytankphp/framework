@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests;
+namespace TinyTank\Tests;
 
-use Starlite\Kernel;
+use TinyTank\Kernel;
 
 final class DatastarTest extends FrameworkTestCase
 {

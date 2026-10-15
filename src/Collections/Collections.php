@@ -2,32 +2,32 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Collections;
+namespace TinyTank\Collections;
 
-use Starlite\Blog\MarkdownParser;
-use Starlite\Cache;
-use Starlite\Content\InvalidDate;
-use Starlite\Content\StrictYaml;
-use Starlite\Query;
-use Starlite\Site;
+use TinyTank\Blog\MarkdownParser;
+use TinyTank\Cache;
+use TinyTank\Content\InvalidDate;
+use TinyTank\Content\StrictYaml;
+use TinyTank\Query;
+use TinyTank\Site;
 
 /**
  * Data collections: structured content beyond blog posts (FAQs, team, products, a sound catalogue…),
  * defined in config/collections.php (see Schema) and kept in content/<collection>/:
  *
- *   content/faq/what-is-starlite.md       front matter (the fields) + an optional Markdown body (`html`)
- *   content/faq/what-is-starlite.it.md    Italian version: omitted fields keep the default-language value
+ *   content/faq/what-is-tinytank.md       front matter (the fields) + an optional Markdown body (`html`)
+ *   content/faq/what-is-tinytank.it.md    Italian version: omitted fields keep the default-language value
  *   content/team/ada.yaml                 data only
  *
  * The file name is the item's slug. Query them with `collection('faq')` in Twig or
- * `$app->collection('faq')` in PHP (see Starlite\Query), in the current language.
+ * `$app->collection('faq')` in PHP (see TinyTank\Query), in the current language.
  *
  * Without APP_DEBUG every collection is compiled once into var/cache/collections.php (Markdown
  * already rendered), like the blog: run `bin/console deploy` after changing content.
  */
 final class Collections
 {
-    /** content/ folders that belong to Starlite, not to collections. */
+    /** content/ folders that belong to TinyTank, not to collections. */
     public const RESERVED = ['blog', 'pages'];
 
     private const SLUG = '[a-z0-9]+(?:-[a-z0-9]+)*';

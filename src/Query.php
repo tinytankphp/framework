@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite;
+namespace TinyTank;
 
 /**
  * A content query, as in Craft's element queries: content isn't handed to templates, they ask for it.

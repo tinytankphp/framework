@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite;
+namespace TinyTank;
 
 /**
  * Compile-once PHP file cache. Data is stored as `return [...]` files, so Opcache keeps it

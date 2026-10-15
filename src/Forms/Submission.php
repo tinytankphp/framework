@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Forms;
+namespace TinyTank\Forms;
 
 /**
  * A form's state for its template: what was sent, the errors, and whether it went out.

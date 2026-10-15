@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Console;
+namespace TinyTank\Console;
 
-use Starlite\Kernel;
+use TinyTank\Kernel;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Command\Command;
 
@@ -33,7 +33,7 @@ final class Console
             return $kernel ??= Kernel::boot($root, $debug);
         };
 
-        $console = new Application('Starlite');
+        $console = new Application('TinyTank');
         $console->setAutoExit(false);
         $console->addCommand(new DeployCommand($root, $boot));
         $console->addCommand(new CacheClearCommand($root));

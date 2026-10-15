@@ -5,7 +5,7 @@ declare(strict_types=1);
 // Runs the fixture app in production the way public/index.php does (Kernel::run(), with its PHP error
 // handling), in a process of its own: for LogTest. Arguments: URL path, cache directory, log file.
 
-use Starlite\Kernel;
+use TinyTank\Kernel;
 
 require __DIR__ . '/../../vendor/autoload.php';
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Cdn;
+namespace TinyTank\Cdn;
 
 /**
  * Any CDN with a command-line tool or a script of your own (CDN_PURGE_CMD): the command runs in the

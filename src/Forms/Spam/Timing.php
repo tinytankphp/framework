@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Forms\Spam;
+namespace TinyTank\Forms\Spam;
 
-use Starlite\Forms\Form;
+use TinyTank\Forms\Form;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -61,6 +61,6 @@ final class Timing implements SpamCheck
 
     private function sign(string $payload): string
     {
-        return hash_hmac('sha256', 'starlite-form|' . $payload, $this->secret);
+        return hash_hmac('sha256', 'tinytank-form|' . $payload, $this->secret);
     }
 }

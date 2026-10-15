@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Console;
+namespace TinyTank\Console;
 
-use Starlite\Kernel;
+use TinyTank\Kernel;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -23,7 +23,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 #[AsCommand('cdn:purge', 'Drops pages from the CDN\'s cache: paths or URLs, or --all.')]
 final class CdnPurgeCommand extends Command
 {
-    /** @param \Closure(?bool): Kernel $boot shared kernel factory from Starlite\Console\Console */
+    /** @param \Closure(?bool): Kernel $boot shared kernel factory from TinyTank\Console\Console */
     public function __construct(private readonly \Closure $boot)
     {
         parent::__construct();

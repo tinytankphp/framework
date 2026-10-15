@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Cdn;
+namespace TinyTank\Cdn;
 
 /**
  * Drops pages from a CDN's cache, so it fetches them again from the site: after a deploy (everything)
- * or with `bin/console cdn:purge <url>` (a few pages). Starlite has Cloudflare, Bunny and a shell
+ * or with `bin/console cdn:purge <url>` (a few pages). TinyTank has Cloudflare, Bunny and a shell
  * command built in (config/app.php `cdn.purge`); a package adds another CDN with
  * `$app->cdn->usePurger(new FastlyPurger(…))`.
  *

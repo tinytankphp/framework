@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests;
+namespace TinyTank\Tests;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Starlite\Blog\MarkdownParser;
-use Starlite\Content\InvalidDate;
-use Starlite\Content\StrictYaml;
+use TinyTank\Blog\MarkdownParser;
+use TinyTank\Content\InvalidDate;
+use TinyTank\Content\StrictYaml;
 
 final class StrictYamlTest extends TestCase
 {

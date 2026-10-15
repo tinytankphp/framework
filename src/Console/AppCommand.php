@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Console;
+namespace TinyTank\Console;
 
-use Starlite\Kernel;
+use TinyTank\Kernel;
 use Symfony\Component\Console\Command\Command;
 
 /**
@@ -29,7 +29,7 @@ abstract class AppCommand extends Command
     /** @var (\Closure(): Kernel)|null */
     private ?\Closure $kernel = null;
 
-    /** @internal called by Starlite\Console\Console when the command is registered */
+    /** @internal called by TinyTank\Console\Console when the command is registered */
     final public function setKernelFactory(\Closure $kernel): void
     {
         $this->kernel = $kernel;

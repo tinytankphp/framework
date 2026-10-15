@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests;
+namespace TinyTank\Tests;
 
 use PHPUnit\Framework\Attributes\DataProvider;
-use Starlite\Kernel;
+use TinyTank\Kernel;
 
 final class ComponentsTest extends FrameworkTestCase
 {
@@ -37,7 +37,7 @@ final class ComponentsTest extends FrameworkTestCase
         self::assertNotNull($post);
 
         self::assertSame([['name' => 'greeting', 'args' => ['text' => 'Hi "you"', 'count' => 3, 'ratio' => 1.5, 'loud' => true, 'off' => false]]], $post['components']);
-        self::assertSame("<p>Before.</p>\n<!--starlite-component:0-->\n<p>After.</p>\n", $post['html'], 'the compiled HTML keeps a placeholder');
+        self::assertSame("<p>Before.</p>\n<!--tinytank-component:0-->\n<p>After.</p>\n", $post['html'], 'the compiled HTML keeps a placeholder');
         self::assertSame('Before.', $post['summary']);
     }
 
@@ -117,7 +117,7 @@ final class ComponentsTest extends FrameworkTestCase
         yield 'single quotes' => ["::greeting{text='hi'}", 'arguments are key="text"'];
         yield 'unclosed' => ['::greeting{text="hi"', 'a component is ::name or ::name{key="value" …}'];
         yield 'bad name' => ['::Greeting_x', 'a component is ::name or ::name{key="value" …}, with a name of lowercase letters, digits and dashes'];
-        yield 'entry' => ['::greeting{entry="x"}', '"entry" is the post or page the component is in, set by Starlite'];
+        yield 'entry' => ['::greeting{entry="x"}', '"entry" is the post or page the component is in, set by TinyTank'];
         yield 'twice' => ['::greeting{text="a" text="b"}', '"text" is given twice'];
     }
 
@@ -157,6 +157,6 @@ final class ComponentsTest extends FrameworkTestCase
 
         $paths = $app->twig->getLoader() instanceof \Twig\Loader\FilesystemLoader ? $app->twig->getLoader()->getPaths() : [];
         self::assertSame([realpath(self::PROJECT . '/templates'), $package, Kernel::TEMPLATES], [realpath($paths[0] ?? ''), $paths[1] ?? null, $paths[2] ?? null], 'the framework stays last');
-        self::assertSame([Kernel::TEMPLATES], $app->twig->getLoader() instanceof \Twig\Loader\FilesystemLoader ? $app->twig->getLoader()->getPaths('starlite') : []);
+        self::assertSame([Kernel::TEMPLATES], $app->twig->getLoader() instanceof \Twig\Loader\FilesystemLoader ? $app->twig->getLoader()->getPaths('tinytank') : []);
     }
 }

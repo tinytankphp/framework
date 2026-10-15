@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests;
+namespace TinyTank\Tests;
 
 use PHPUnit\Framework\Attributes\DataProvider;
-use Starlite\Kernel;
+use TinyTank\Kernel;
 
 final class CollectionsTest extends FrameworkTestCase
 {
@@ -208,7 +208,7 @@ final class CollectionsTest extends FrameworkTestCase
     {
         yield 'no fields' => [['faq' => []], 'config/collections.php "faq": needs "fields"'];
         yield 'unknown type' => [['faq' => ['fields' => ['q' => 'text']]], 'field "q" has unknown type "text"'];
-        yield 'reserved field' => [['faq' => ['fields' => ['html' => 'string']]], '"html" is set by Starlite and can\'t be a field'];
+        yield 'reserved field' => [['faq' => ['fields' => ['html' => 'string']]], '"html" is set by TinyTank and can\'t be a field'];
         yield 'bad name' => [['FAQ-list' => ['fields' => ['q' => 'string']]], 'collection names use lowercase letters, digits and underscores'];
         yield 'reserved name' => [['blog' => ['fields' => ['q' => 'string']]], '"blog" is reserved'];
         yield 'unknown option' => [['faq' => ['fields' => ['q' => 'string'], 'order' => 'q']], 'unknown option "order"'];

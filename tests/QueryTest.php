@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests;
+namespace TinyTank\Tests;
 
-use Starlite\Query;
-use Starlite\Site;
+use TinyTank\Query;
+use TinyTank\Site;
 
 final class QueryTest extends FrameworkTestCase
 {

@@ -1,6 +1,6 @@
 <?php
 
-// Fixture project for Starlite's own tests: same shape as an app's config/app.php.
+// Fixture project for TinyTank's own tests: same shape as an app's config/app.php.
 return [
     'secret' => getenv('APP_SECRET') ?: throw new RuntimeException('APP_SECRET is not set.'),
     'debug' => false,

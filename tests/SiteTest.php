@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests;
+namespace TinyTank\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Starlite\Site;
+use TinyTank\Site;
 
 final class SiteTest extends TestCase
 {

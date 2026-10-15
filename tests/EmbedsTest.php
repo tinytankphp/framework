@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests;
+namespace TinyTank\Tests;
 
-use Starlite\Content\Embeds;
-use Starlite\Kernel;
+use TinyTank\Content\Embeds;
+use TinyTank\Kernel;
 
 final class EmbedsTest extends FrameworkTestCase
 {

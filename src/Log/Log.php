@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Log;
+namespace TinyTank\Log;
 
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\DeduplicationHandler;
@@ -45,7 +45,7 @@ final class Log
      * @param array{dsn?: ?string, from?: ?string} $mailer    for the alerts
      * @param TransportInterface|null              $transport sends the alerts instead of MAILER_DSN (tests)
      */
-    public static function create(string $root, array $config, bool $debug, array $mailer = [], string $siteName = 'Starlite', ?TransportInterface $transport = null): Logger
+    public static function create(string $root, array $config, bool $debug, array $mailer = [], string $siteName = 'TinyTank', ?TransportInterface $transport = null): Logger
     {
         $unknown = array_diff(array_keys($config), ['level', 'path', 'days', 'alert_to']);
         if ($unknown !== []) {
@@ -76,7 +76,7 @@ final class Log
 
         // A log that can't be written (permissions, full disk) never takes the page down with it.
         $logger->setExceptionHandler(static function (\Throwable $e, LogRecord $record): void {
-            error_log("Starlite could not write its log ({$e->getMessage()}): {$record->level->getName()} {$record->message}");
+            error_log("TinyTank could not write its log ({$e->getMessage()}): {$record->level->getName()} {$record->message}");
         });
 
         return $logger;
@@ -102,7 +102,7 @@ final class Log
             ->subject("[{$siteName}] %level_name%: %message%");
         $mail = new AlertMailHandler($transport ?? Transport::fromDsn((string) $dsn), $email, $fallback);
         $mail->setFormatter(self::formatter($root));
-        $store = str_contains($logDir, '://') ? sys_get_temp_dir() . '/starlite-alerts-' . hash('xxh128', $root) : $logDir . '/alerts.dedup';
+        $store = str_contains($logDir, '://') ? sys_get_temp_dir() . '/tinytank-alerts-' . hash('xxh128', $root) : $logDir . '/alerts.dedup';
 
         return new FingersCrossedHandler(
             new DeduplicationHandler($mail, $store, Level::Error, self::ALERT_INTERVAL),

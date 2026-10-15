@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Images;
+namespace TinyTank\Images;
 
 use Intervention\Image\Interfaces\ImageInterface;
 

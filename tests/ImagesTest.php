@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests;
+namespace TinyTank\Tests;
 
-use Starlite\Images\Images;
+use TinyTank\Images\Images;
 
 final class ImagesTest extends FrameworkTestCase
 {

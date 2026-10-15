@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests;
+namespace TinyTank\Tests;
 
 final class SeoTest extends FrameworkTestCase
 {

@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Console;
+namespace TinyTank\Console;
 
-use Starlite\Blog\Blog;
-use Starlite\Content\Embeds;
-use Starlite\Pages\Pages;
-use Starlite\Cache;
-use Starlite\Kernel;
+use TinyTank\Blog\Blog;
+use TinyTank\Content\Embeds;
+use TinyTank\Pages\Pages;
+use TinyTank\Cache;
+use TinyTank\Kernel;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -48,7 +48,7 @@ final class DeployCommand extends Command
 {
     private const OPCACHE_MODES = ['cachetool', 'reload', 'none'];
 
-    /** @param (\Closure(?bool): Kernel)|null $boot shared kernel factory from Starlite\Console\Console */
+    /** @param (\Closure(?bool): Kernel)|null $boot shared kernel factory from TinyTank\Console\Console */
     public function __construct(private readonly string $root, private readonly ?\Closure $boot = null)
     {
         parent::__construct();
@@ -123,7 +123,7 @@ final class DeployCommand extends Command
             return Command::SUCCESS;
         }
 
-        $io->title('Starlite deploy');
+        $io->title('TinyTank deploy');
         foreach ($steps as $name => $step) {
             if (in_array($name, $skip, true)) {
                 continue;

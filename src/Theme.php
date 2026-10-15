@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite;
+namespace TinyTank;
 
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
@@ -12,7 +12,7 @@ use Twig\TwigFunction;
  *
  * `{{ theme_script() }}` goes at the top of `<head>`: a tiny inline script that sets
  * `<html data-theme="light|dark">` before the page is painted, from the visitor's saved choice or
- * else their system setting. In the browser, `theme()` from the 'starlite' module keeps it in step
+ * else their system setting. In the browser, `theme()` from the 'tinytank' module keeps it in step
  * with the `_theme` signal ('light', 'dark' or 'system'), saves the choice and follows system changes.
  *
  * The script is the same on every page and for every visitor (pages stay cacheable), so a Content
@@ -20,8 +20,8 @@ use Twig\TwigFunction;
  */
 final class Theme extends AbstractExtension
 {
-    /** localStorage key and signal; resources/js/starlite.js uses the same two. */
-    public const STORAGE_KEY = 'starlite-theme';
+    /** localStorage key and signal; resources/js/tinytank.js uses the same two. */
+    public const STORAGE_KEY = 'tinytank-theme';
     public const SIGNAL = '_theme';
 
     // The saved value is persist()'s format: {"_theme": "dark"}. Anything else means "system".

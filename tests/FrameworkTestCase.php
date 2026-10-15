@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Tests;
+namespace TinyTank\Tests;
 
-use Starlite\Kernel;
-use Starlite\Testing\KernelTestCase;
+use TinyTank\Kernel;
+use TinyTank\Testing\KernelTestCase;
 
 /**
  * Boots the fixture project (tests/data/project) with the fixture content (tests/data/content).

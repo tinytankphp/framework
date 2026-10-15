@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Starlite;
+namespace TinyTank;
 
 use Monolog\Logger;
 use Monolog\LogRecord;
 use Psr\Log\LoggerInterface;
-use Starlite\Blog\Blog;
-use Starlite\Cdn\Cdn;
-use Starlite\Collections\Collections;
-use Starlite\Content\Embeds;
-use Starlite\Forms\Forms;
-use Starlite\Images\Images;
-use Starlite\Log\Log;
-use Starlite\Pages\Pages;
-use Starlite\Seo\Seo;
+use TinyTank\Blog\Blog;
+use TinyTank\Cdn\Cdn;
+use TinyTank\Collections\Collections;
+use TinyTank\Content\Embeds;
+use TinyTank\Forms\Forms;
+use TinyTank\Images\Images;
+use TinyTank\Log\Log;
+use TinyTank\Pages\Pages;
+use TinyTank\Seo\Seo;
 use starfederation\datastar\Consts;
 use Symfony\Component\Dotenv\Dotenv;
 use Symfony\Component\ErrorHandler\Debug;
@@ -36,8 +36,8 @@ use Twig\Loader\FilesystemLoader;
 use Twig\TwigFunction;
 
 /**
- * @phpstan-import-type Post from \Starlite\Blog\MarkdownParser
- * @phpstan-import-type Page from \Starlite\Pages\Pages
+ * @phpstan-import-type Post from \TinyTank\Blog\MarkdownParser
+ * @phpstan-import-type Page from \TinyTank\Pages\Pages
  */
 final class Kernel
 {
@@ -200,7 +200,7 @@ final class Kernel
         }
         $this->cacheDir = $cacheDir ?? $root . '/var/cache';
         $contentDir ??= $root . '/content';
-        $this->site = $site ?? new Site('http://localhost', 'Starlite');
+        $this->site = $site ?? new Site('http://localhost', 'TinyTank');
         $this->container = new Container($this);
         $this->requests = new RequestStack();
         $this->logger = Log::create($root, $log, $debug, $mailer, $this->site->name());
@@ -223,9 +223,9 @@ final class Kernel
         $this->router = new Router($this->cacheDir, $debug);
         // Templates: the site's first, then packages' (addTemplates()), then the framework's defaults,
         // so a site overrides any of them by creating a file with the same name. The defaults are also
-        // reachable as @starlite/…, for an override that extends the original.
+        // reachable as @tinytank/…, for an override that extends the original.
         $templates = $this->templates = new FilesystemLoader([$root . '/templates', self::TEMPLATES]);
-        $templates->addPath(self::TEMPLATES, 'starlite');
+        $templates->addPath(self::TEMPLATES, 'tinytank');
         // Content components (::name{…} in Markdown), checked when content compiles: the template must
         // exist, and the default video components need a valid id.
         $this->images = $images ?? new Images($root . '/var/images');
@@ -271,7 +271,7 @@ final class Kernel
         $this->twig->addExtension($this->translations);
         $this->twig->addExtension(new IntlExtension()); // format_date / format_number, localized with site.locale
         $this->twig->addFunction(new TwigFunction('path', $this->path(...)));
-        // Content is queried, not injected: posts(), pages() and collection('faq') return a Starlite\Query.
+        // Content is queried, not injected: posts(), pages() and collection('faq') return a TinyTank\Query.
         $this->twig->addFunction(new TwigFunction('posts', $this->posts(...)));
         $this->twig->addFunction(new TwigFunction('collection', $this->collection(...)));
         $this->twig->addFunction(new TwigFunction('pages', $this->pages(...)));
@@ -346,7 +346,7 @@ final class Kernel
     {
         $components = is_array($item['components'] ?? null) ? $item['components'] : [];
 
-        return (string) preg_replace_callback('/<!--starlite-component:(\d+)-->/', function (array $m) use ($item, $components, $link): string {
+        return (string) preg_replace_callback('/<!--tinytank-component:(\d+)-->/', function (array $m) use ($item, $components, $link): string {
             $component = $components[(int) $m[1]] ?? null;
             if (!is_array($component)) {
                 return '';
@@ -644,7 +644,7 @@ final class Kernel
 
         // Stateless CSRF protection: the browser's Sec-Fetch-Site / Origin headers must show the
         // request comes from this site. No token, cookie or session needed.
-        if ($csrf && !$request->isMethodSafe() && !$this->csrf->isTokenValid(new CsrfToken('starlite', 'csrf-token'))) {
+        if ($csrf && !$request->isMethodSafe() && !$this->csrf->isTokenValid(new CsrfToken('tinytank', 'csrf-token'))) {
             return $this->error(403, 'Cross-site request blocked.');
         }
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Starlite\Content;
+namespace TinyTank\Content;
 
 use League\CommonMark\Node\Block\AbstractBlock;
 
