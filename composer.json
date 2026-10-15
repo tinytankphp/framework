@@ -14,7 +14,7 @@
     ],
     "homepage": "https://tinytank.dev/",
     "support": {
-        "docs": "https://tinytank.dev/",
+        "docs": "https://docs.tinytank.dev/",
         "source": "https://github.com/tinytankphp/framework",
         "issues": "https://github.com/tinytankphp/framework/issues"
     },

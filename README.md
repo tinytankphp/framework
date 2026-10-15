@@ -9,7 +9,7 @@ all compiled ahead of time for Opcache. Freely inspired by [Craft CMS](https://c
 **This is the framework package (`tinytank/framework`). To build a site, start from the skeleton:
 [tinytankphp/tinytank](https://github.com/tinytankphp/tinytank).**
 
-📖 **Documentation:** https://tinytank.dev/
+📖 **Documentation:** https://docs.tinytank.dev/
 
 ## Installation
 
