@@ -1,7 +1,8 @@
 {
-    "name": "starlite/framework",
+    "name": "tinytank/framework",
     "description": "Starlite: a tiny, database-free PHP micro framework for static-like dynamic sites (Datastar, Symfony Routing, Twig, Markdown blog, translations, SEO), compiled for Opcache.",
     "type": "library",
+    "license": "MIT",
     "keywords": [
         "framework",
         "datastar",
@@ -19,6 +20,9 @@
     },
     "require": {
         "php": ">=8.4",
+        "ext-intl": "*",
+        "ext-mbstring": "*",
+        "ext-xmlwriter": "*",
         "intervention/image": "^4.3",
         "league/commonmark": "^2.8",
         "monolog/monolog": "^3.9",
@@ -43,6 +47,8 @@
         "phpunit/phpunit": "^12.0"
     },
     "suggest": {
+        "ext-gd": "Responsive images (GD or Imagick, with WebP; AVIF where available)",
+        "ext-imagick": "Responsive images (Imagick or GD), used when both are installed",
         "phpunit/phpunit": "For Starlite\\Testing\\KernelTestCase in your app's tests"
     },
     "autoload": {
@@ -57,7 +63,7 @@
     },
     "extra": {
         "branch-alias": {
-            "dev-main": "1.x-dev"
+            "dev-main": "0.1.x-dev"
         }
     },
     "config": {
