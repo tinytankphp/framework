@@ -7,6 +7,14 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+### Added
+
+- **Syntax highlighting for code blocks** (```php, ```twig…), when content compiles, with
+  [tempest/highlight](https://github.com/tempestphp/highlight): no JavaScript, nothing loaded from
+  elsewhere. Blocks are `<pre data-lang="php"><code class="language-php">` with `hl-*` classes for
+  the colours; the skeleton's `resources/css/app.css` styles them. To get them in your site, copy the
+  "Code blocks" rules from the skeleton's `app.css`. Unknown languages stay plain text.
+
 ## [0.1.0] - 2026-10-15
 
 The first tagged release. TinyTank is in beta: the API may still change between minor versions.

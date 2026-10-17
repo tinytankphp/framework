@@ -39,6 +39,7 @@
         "symfony/security-csrf": "^7.4",
         "symfony/translation": "^7.4",
         "symfony/yaml": "^7.4",
+        "tempest/highlight": "^2.28",
         "twig/intl-extra": "^3.10",
         "twig/twig": "^3.10"
     },
