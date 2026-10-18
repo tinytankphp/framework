@@ -190,6 +190,24 @@ final class ImagesTest extends FrameworkTestCase
         self::assertStringContainsString('srcset="https://cdn.example.test/media/blog/alpha/photo.jpg.16w.webp 16w', $app->posts()->slug('alpha')->one()['html'] ?? '');
     }
 
+    public function testImagesThatArentPhotosOfTheFolderRenderAsPlainImages(): void
+    {
+        // Found by the first real site: these went to CommonMark's own renderer without its
+        // configuration, and the page failed.
+        $content = $this->copyToTemp(self::CONTENT, 'content');
+        file_put_contents("{$content}/blog/2026/09/alpha/photo.jpg", self::phonePhoto());
+        file_put_contents("{$content}/blog/2026/09/alpha/index.md", (string) file_get_contents("{$content}/blog/2026/09/alpha/index.md")
+            . "\n![Rome](photo.jpg)\n\n![Icon](icon.svg)\n\n![Site icon](/favicon.svg \"The icon\")\n\n![Elsewhere](https://example.com/x.png)\n\n![Bad](javascript:alert(1))\n");
+        $app = $this->kernel(overrides: ['content_dir' => $content, 'images' => ['widths' => [16], 'formats' => ['webp']]]);
+
+        $html = $this->body($this->request($app, '/blog/alpha'));
+        self::assertStringContainsString('<picture>', $html, 'the photo still gets its versions');
+        self::assertStringContainsString('<img src="/media/blog/alpha/icon.svg" alt="Icon" />', $html);
+        self::assertStringContainsString('<img src="/favicon.svg" alt="Site icon" title="The icon" />', $html);
+        self::assertStringContainsString('<img src="https://example.com/x.png" alt="Elsewhere" />', $html);
+        self::assertStringNotContainsString('javascript:', $html, 'unsafe links are still dropped: the configuration arrives');
+    }
+
     // --- Presets ----------------------------------------------------------------------
 
     /** A 400×200 landscape test image. */

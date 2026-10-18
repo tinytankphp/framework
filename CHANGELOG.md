@@ -7,6 +7,22 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-10-18
+
+### Fixed
+
+- **Markdown images that aren't photos of the folder** (an image from another site, a file from
+  `public/` such as `/favicon.svg`, or an SVG in the folder) made the page fail with "Typed property
+  …ImageRenderer::$config must not be accessed before initialization". They render as plain `<img>`
+  again. Found by the first real site's style guide.
+
+### Skeleton
+
+- **A style guide page**, `content/pages/style-guide/` (unlisted, at `/style-guide`): every element a
+  post or page can contain, for designing a site, and checked by the skeleton's tests, so a broken
+  element fails CI. For an existing site, copy the folder from the skeleton.
+- Code block labels no longer overlap long lines (`padding-top` in the "Code blocks" CSS).
+
 ## [0.1.1] - 2026-10-18
 
 Found while building the first real TinyTank site (lab909.dev).
@@ -76,6 +92,7 @@ The first tagged release. TinyTank is in beta: the API may still change between 
   want the same: `config/app.php` (`log` and `cdn` sections), `src/Controller/PageController.php`
   (`cdn: false` support), `config/routes.php` (blog page numbers up to 6 digits), `.env.example`.
 
-[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/tinytankphp/framework/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/tinytankphp/framework/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/tinytankphp/framework/releases/tag/v0.1.0
