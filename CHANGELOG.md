@@ -7,6 +7,20 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-10-18
+
+No framework changes: the skeleton and the docs.
+
+### Skeleton
+
+- **`composer create-project` prepares the site**: `bin/create-site.php` runs right after it and
+  names the site after its folder (`composer.json`, `package.json`, the DDEV project), creates `.env`
+  with a fresh `APP_SECRET`, lets git track `composer.lock`, points CI at it, adds Composer to
+  Dependabot, writes the site's README, and removes TinyTank's own maintainer files. With GitHub's
+  template button, run `php bin/create-site.php` once.
+- The docs have a **Starting a site** checklist for what's left: identity, starter content (the style
+  guide included), contact and privacy, licenses.
+
 ## [0.1.2] - 2026-10-18
 
 ### Fixed
@@ -92,7 +106,8 @@ The first tagged release. TinyTank is in beta: the API may still change between 
   want the same: `config/app.php` (`log` and `cdn` sections), `src/Controller/PageController.php`
   (`cdn: false` support), `config/routes.php` (blog page numbers up to 6 digits), `.env.example`.
 
-[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/tinytankphp/framework/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/tinytankphp/framework/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/tinytankphp/framework/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/tinytankphp/framework/releases/tag/v0.1.0
