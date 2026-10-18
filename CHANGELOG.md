@@ -7,6 +7,27 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-10-18
+
+No framework changes: the skeleton and the docs, after a test with a coding agent starting a site
+from the docs alone.
+
+### Skeleton
+
+- **`AGENTS.md`** (and a `CLAUDE.md` pointing to it): how a TinyTank site works, where things go,
+  the rules that trip people up, the commands. Sites keep it. For an existing site, copy it.
+- **`public/index.php` serves files under PHP's built-in server**, so
+  `php -S localhost:8000 -t public public/index.php` delivers the built CSS and JS. For an existing
+  site, copy the `cli-server` block at the top of the skeleton's `public/index.php`.
+- **`datastarUrl()`** in `tests/AppTestCase.php` finds actions of any method (`@post`…), or of one.
+
+### Docs
+
+- `llms.txt`, `llms-full.txt` and a Markdown version of every page, for LLMs and coding agents.
+- "Your first page" rewritten: a content page, a page with a controller, browser and server
+  interactivity. The starting checklist lists which tests check each starter example, and how to
+  make a single-language site.
+
 ## [0.1.3] - 2026-10-18
 
 No framework changes: the skeleton and the docs.
@@ -106,7 +127,8 @@ The first tagged release. TinyTank is in beta: the API may still change between 
   want the same: `config/app.php` (`log` and `cdn` sections), `src/Controller/PageController.php`
   (`cdn: false` support), `config/routes.php` (blog page numbers up to 6 digits), `.env.example`.
 
-[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/tinytankphp/framework/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/tinytankphp/framework/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/tinytankphp/framework/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/tinytankphp/framework/compare/v0.1.0...v0.1.1
