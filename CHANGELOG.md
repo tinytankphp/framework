@@ -7,6 +7,11 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-10-19
+
+What building lab909.dev needed. Nothing to change in an existing site; rebuild its assets
+(`npm run build`) for the font fix.
+
 ### Added
 
 - **A default theme** other than the system's: `'theme' => ['default' => 'dark']` (or `'light'`) in
@@ -27,6 +32,20 @@ change behaviour, and its notes say what to update in your site.
 - **Small font files are no longer inlined as `data:` URLs** by Vite (some subsets weigh under its
   4 KB limit), which the Content Security Policy blocked (`font-src 'self'`): the browser logged a
   violation and the subset didn't load. Found with Orbitron on lab909.dev. Rebuild your assets.
+
+### Skeleton
+
+- **`config/globals.php`**, empty, with a commented example. For an existing site, create it when
+  you need it.
+- **`config/app.php`**: a commented `theme` example (`'default' => 'system'`).
+- **`AGENTS.md`**: global values in "Where things go", and "ARIA states are strings"
+  (`data-attr:aria-expanded="String($open)"`) in the rules that trip people up. For an existing
+  site, copy the two lines.
+
+### Docs
+
+- Global values (Templates), paths inside a field (Querying content), a default theme and a two-way
+  light/dark switch (Theme), `site.path`, and "ARIA states are strings" (Datastar).
 
 ## [0.1.4] - 2026-10-18
 
@@ -148,7 +167,8 @@ The first tagged release. TinyTank is in beta: the API may still change between 
   want the same: `config/app.php` (`log` and `cdn` sections), `src/Controller/PageController.php`
   (`cdn: false` support), `config/routes.php` (blog page numbers up to 6 digits), `.env.example`.
 
-[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/tinytankphp/framework/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/tinytankphp/framework/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/tinytankphp/framework/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/tinytankphp/framework/compare/v0.1.1...v0.1.2
