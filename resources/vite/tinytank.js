@@ -71,6 +71,10 @@ export default function tinytank({ input = defaultInput(), reload = [] } = {}) {
                         emptyOutDir: build.emptyOutDir ?? true,
                         manifest: build.manifest ?? true,
                         sourcemap: build.sourcemap ?? true,
+                        // Fonts are never inlined as data: URLs, however small (some subsets are under
+                        // Vite's 4 KB limit): the Content Security Policy only allows fonts from the
+                        // site itself (font-src 'self'). Other small assets inline as usual.
+                        assetsInlineLimit: build.assetsInlineLimit ?? ((file) => (/\.(woff2?|ttf|otf|eot)$/i.test(file) ? false : undefined)),
                         rolldownOptions: {
                             input: build.rolldownOptions?.input ?? input,
                             // Keep license comments (/*! … */, @license) in the minified bundles: they're

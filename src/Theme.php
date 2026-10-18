@@ -24,9 +24,21 @@ final class Theme extends AbstractExtension
     public const STORAGE_KEY = 'tinytank-theme';
     public const SIGNAL = '_theme';
 
-    // The saved value is persist()'s format: {"_theme": "dark"}. Anything else means "system".
+    // The saved value is persist()'s format: {"_theme": "dark"}. Anything else means "system"
+    // (or the site's default theme, see script()).
     public const SCRIPT = '(function(){var t;try{t=JSON.parse(localStorage.getItem("' . self::STORAGE_KEY . '")||"{}").' . self::SIGNAL . '}catch(e){}'
         . 'document.documentElement.dataset.theme=t==="light"||t==="dark"?t:matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"})()';
+
+    /** What a visitor who hasn't chosen gets: their system setting, or a fixed theme. */
+    public const DEFAULTS = ['system', 'light', 'dark'];
+
+    /** @param string $default config/app.php `theme.default`: 'system' (the default), 'light' or 'dark' */
+    public function __construct(public readonly string $default = 'system')
+    {
+        if (!in_array($default, self::DEFAULTS, true)) {
+            throw new \InvalidArgumentException('config/app.php theme.default is "system", "light" or "dark" (got "' . $default . '").');
+        }
+    }
 
     public function getFunctions(): array
     {
@@ -35,12 +47,25 @@ final class Theme extends AbstractExtension
 
     public function tag(): string
     {
-        return '<script>' . self::SCRIPT . '</script>';
+        return '<script>' . self::script($this->default) . '</script>';
+    }
+
+    /**
+     * The script for a default theme: SCRIPT for 'system'; for 'light' or 'dark', a visitor without a
+     * saved choice gets that theme instead of their system's.
+     */
+    public static function script(string $default = 'system'): string
+    {
+        return $default === 'system' ? self::SCRIPT : str_replace(
+            ':matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"})()',
+            ':' . json_encode($default) . '})()',
+            self::SCRIPT,
+        );
     }
 
     /** CSP source for the script, e.g. "'sha256-…'" in `script-src`. */
-    public static function hash(): string
+    public static function hash(string $default = 'system'): string
     {
-        return Csp::hash(self::SCRIPT);
+        return Csp::hash(self::script($default));
     }
 }

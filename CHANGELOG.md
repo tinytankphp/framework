@@ -7,6 +7,20 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+### Added
+
+- **A default theme** other than the system's: `'theme' => ['default' => 'dark']` (or `'light'`) in
+  `config/app.php`. Visitors without a saved choice get it from the first paint; the inline script's
+  CSP hash follows. Keep the layout's signal default the same (`data-signals="{_theme: 'dark'}"`).
+- **`site.path`**: the current page's path without the language prefix, for menus that mark the
+  current section (`site.path starts with '/projects'`).
+
+### Fixed
+
+- **Small font files are no longer inlined as `data:` URLs** by Vite (some subsets weigh under its
+  4 KB limit), which the Content Security Policy blocked (`font-src 'self'`): the browser logged a
+  violation and the subset didn't load. Found with Orbitron on lab909.dev. Rebuild your assets.
+
 ## [0.1.4] - 2026-10-18
 
 No framework changes: the skeleton and the docs, after a test with a coding agent starting a site

@@ -28,6 +28,15 @@ final class SiteTest extends TestCase
         self::assertSame(['en', '/italy', false], $site->resolve('/italy'));
     }
 
+    public function testThePathIsTheCurrentPageWithoutTheLanguage(): void
+    {
+        $site = $this->site();
+        self::assertSame('/', $site->path());
+
+        $site->enter(...array_slice($site->resolve('/it/blog/page/2'), 0, 2));
+        self::assertSame('/blog/page/2', $site->path());
+    }
+
     public function testLocalizeAndUrl(): void
     {
         $site = $this->site();

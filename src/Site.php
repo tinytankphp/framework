@@ -134,6 +134,15 @@ final class Site extends AbstractExtension implements GlobalsInterface
     // --- Current request -----------------------------------------------------
 
     /** Current language code, e.g. "it". */
+    /**
+     * The current page's path, without the language prefix: '/projects/page/2' on /it/projects/page/2.
+     * For menus that mark where the visitor is: `site.path starts with '/projects'`.
+     */
+    public function path(): string
+    {
+        return $this->path;
+    }
+
     public function language(): string
     {
         return $this->language;

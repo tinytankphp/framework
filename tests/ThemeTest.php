@@ -30,4 +30,22 @@ final class ThemeTest extends FrameworkTestCase
         self::assertSame("'sha256-" . base64_encode(hash('sha256', Theme::SCRIPT, true)) . "'", Theme::hash());
         self::assertMatchesRegularExpression("#^'sha256-[A-Za-z0-9+/]{43}='$#", Theme::hash());
     }
+
+    public function testASiteCanDefaultToATheme(): void
+    {
+        $app = $this->kernel(overrides: ['theme' => ['default' => 'dark']]);
+        $response = $this->request($app, '/');
+
+        self::assertStringContainsString('<script>' . Theme::script('dark') . '</script>', $this->body($response));
+        self::assertStringContainsString(':"dark"})()', Theme::script('dark'), 'no saved choice: dark, whatever the system says');
+        self::assertStringNotContainsString('matchMedia', Theme::script('dark'));
+        self::assertStringContainsString('t==="light"||t==="dark"?t', Theme::script('dark'), 'a saved choice still wins');
+        self::assertStringContainsString(Theme::hash('dark'), (string) $response->headers->get('Content-Security-Policy'), 'the CSP allows this script');
+    }
+
+    public function testAnUnknownDefaultIsRefused(): void
+    {
+        $this->expectExceptionMessage('theme.default is "system", "light" or "dark"');
+        $this->kernel(overrides: ['theme' => ['default' => 'neon']]);
+    }
 }

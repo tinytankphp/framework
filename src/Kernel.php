@@ -139,6 +139,7 @@ final class Kernel
             new Images($config['images_dir'] ?? $root . '/var/images', $config['images'] ?? []),
             $config['log'] ?? [],
             $config['cdn'] ?? [],
+            $config['theme']['default'] ?? 'system',
         );
 
         // The app's extension point: services, Twig extensions and globals, deploy steps.
@@ -175,6 +176,8 @@ final class Kernel
      * @param Images|null          $images   responsive images (config/app.php `images`); var/images/ by default
      * @param array<string, mixed> $log      logging (config/app.php `log`, see Log); var/log/ by default
      * @param array<string, mixed> $cdn      CDN caching and purging (config/app.php `cdn`); off by default
+     * @param string               $themeDefault what visitors without a saved choice get (config/app.php
+     *                                       `theme.default`): 'system', 'light' or 'dark'
      */
     public function __construct(
         public readonly string $root,
@@ -193,6 +196,7 @@ final class Kernel
         ?Images $images = null,
         array $log = [],
         array $cdn = [],
+        string $themeDefault = 'system',
     ) {
         $mediaUrl = rtrim($mediaUrl, '/');
         if ($mediaUrl !== '' && !preg_match('#^https://[^/\s?\#]+(/[^\s?\#]*)?$#', $mediaUrl)) {
@@ -265,7 +269,10 @@ final class Kernel
         $this->twig->addExtension($this->datastar);
         $this->twig->addExtension($this->vite);
         $this->twig->addExtension($this->publicConfig);
-        $this->twig->addExtension(new Theme());
+        $this->twig->addExtension($theme = new Theme($themeDefault));
+        if ($theme->default !== 'system') {
+            $this->csp->allowScript(Theme::script($theme->default)); // its own hash
+        }
         $this->twig->addExtension($this->seo);
         $this->twig->addExtension($this->site);
         $this->twig->addExtension($this->translations);
