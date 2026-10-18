@@ -33,7 +33,7 @@ final class SitemapController extends Controller
                 self::url($xml, $this->app->seo->url($this->app->site->localize($path, $language)));
             }
 
-            foreach ($this->app->pages()->language($language) as $page) {
+            foreach ($this->app->pages()->language($language)->where('unlisted', false) as $page) {
                 self::url($xml, $this->app->seo->url($this->app->path('page', ['path' => $page['path']], $language)), $page['updated']);
             }
 

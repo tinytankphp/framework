@@ -32,16 +32,18 @@ use TinyTank\Site;
  *   slug: chi-siamo             (translations only: this language's URL segment instead of the folder name)
  *   form: contact               (optional: the form from config/forms.php this page shows and receives)
  *   cdn: false                  (optional: never cached at the CDN, when config/app.php `cdn` is on)
+ *   unlisted: true              (optional: reachable by its URL only: noindex, not in the sitemap, and
+ *                                menus skip it with ->where('unlisted', false))
  *   ---
  *
- * A translation (index.<code>.md) keeps the image, template, order, updated, cdn and data it omits. With
+ * A translation (index.<code>.md) keeps the image, template, order, updated, cdn, unlisted and data it omits. With
  * `slug:` it gets its own URL, combined with its parents' translated slugs: about/credits in Italian
  * can be /it/chi-siamo/riconoscimenti. The folder path (`path`) stays the page's identity; `uri` is
  * its URL in that language, and Kernel::path('page', ['path' => 'about'], 'it') writes it.
  * Query pages with `pages()` (see TinyTank\Query); a page without a version in a language doesn't
  * exist there. Compiled into var/cache/pages.php without APP_DEBUG, like the blog.
  *
- * @phpstan-type Page array{slug: string, path: string, uri: string, parent: string, depth: int, language: string, title: string, summary: string, image: ?string, template: ?string, form: ?string, order: ?int, updated: ?string, cdn: bool, data: array<mixed>, html: string, components: list<ComponentCall>, source: string, assets: list<string>}
+ * @phpstan-type Page array{slug: string, path: string, uri: string, parent: string, depth: int, language: string, title: string, summary: string, image: ?string, template: ?string, form: ?string, order: ?int, updated: ?string, cdn: bool, unlisted: bool, data: array<mixed>, html: string, components: list<ComponentCall>, source: string, assets: list<string>}
  *
  * @phpstan-import-type ComponentCall from MarkdownParser
  */
@@ -53,10 +55,10 @@ final class Pages
     /** A page path, for the route requirement: segments of lowercase letters, digits and dashes. */
     public const PATH = '[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*)*';
 
-    public const QUERY_FIELDS = ['slug', 'path', 'uri', 'parent', 'depth', 'language', 'title', 'summary', 'image', 'template', 'form', 'order', 'updated'];
+    public const QUERY_FIELDS = ['slug', 'path', 'uri', 'parent', 'depth', 'language', 'title', 'summary', 'image', 'template', 'form', 'order', 'updated', 'unlisted'];
     public const SEARCH_FIELDS = ['title', 'summary'];
 
-    private const FRONT_MATTER = ['title', 'summary', 'image', 'template', 'form', 'order', 'updated', 'cdn', 'data', 'slug'];
+    private const FRONT_MATTER = ['title', 'summary', 'image', 'template', 'form', 'order', 'updated', 'cdn', 'unlisted', 'data', 'slug'];
 
     /** @var array<string, array<string, Page>>|null language => path => page */
     private ?array $pages = null;
@@ -306,6 +308,10 @@ final class Pages
         if (!is_bool($cdn)) {
             throw new \RuntimeException("{$source}: \"cdn\" is true or false (false: never cached at the CDN).");
         }
+        $unlisted = array_key_exists('unlisted', $meta) ? $meta['unlisted'] : $original['unlisted'] ?? false;
+        if (!is_bool($unlisted)) {
+            throw new \RuntimeException("{$source}: \"unlisted\" is true or false (true: reachable by its URL only, not in search engines, the sitemap or menus).");
+        }
         $data = array_key_exists('data', $meta) ? $meta['data'] : $original['data'] ?? [];
         if (!is_array($data)) {
             throw new \RuntimeException("{$source}: \"data\" must be a mapping (key: value).");
@@ -339,6 +345,7 @@ final class Pages
             'order' => $order,
             'updated' => isset($meta['updated']) ? MarkdownParser::date($meta['updated'], $source, 'updated') : $original['updated'] ?? null,
             'cdn' => $cdn,
+            'unlisted' => $unlisted,
             'data' => $data,
             'html' => $html,
             'components' => $components,

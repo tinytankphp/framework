@@ -178,6 +178,27 @@ final class PagesTest extends FrameworkTestCase
         self::assertStringNotContainsString('<loc>https://example.test/chi-siamo</loc>', $xml);
     }
 
+    public function testUnlistedPagesAreReachableButNotListed(): void
+    {
+        $app = $this->withPages([
+            'style-guide/index.md' => "---\ntitle: Style guide\nunlisted: true\n---\nEvery element.",
+            'style-guide/index.it.md' => "---\ntitle: Guida di stile\n---\nOgni elemento.",
+        ]);
+
+        $page = $this->request($app, '/style-guide');
+        self::assertSame(200, $page->getStatusCode(), 'reachable by its URL');
+        self::assertStringContainsString('<meta name="robots" content="noindex">', self::body($page));
+        self::assertStringContainsString('<meta name="robots" content="noindex">', self::body($this->request($app, '/it/style-guide')), 'translations inherit it');
+        self::assertStringNotContainsString('noindex', self::body($this->request($app, '/legal')), 'other pages are indexed');
+
+        $sitemap = self::body($this->request($app, '/sitemap.xml'));
+        self::assertStringNotContainsString('style-guide', $sitemap);
+        self::assertStringContainsString('<loc>https://example.test/legal</loc>', $sitemap);
+
+        self::assertNotContains('style-guide', array_column($app->pages()->where('parent', '')->where('unlisted', false)->all(), 'path'), 'menus skip it');
+        self::assertContains('style-guide', array_column($app->pages()->all(), 'path'), 'queries still see it: templates decide');
+    }
+
     public function testPagesBehindAnotherRouteAreReported(): void
     {
         // The fixture app has an /about route: content/pages/about/ could never be shown.
@@ -212,12 +233,13 @@ final class PagesTest extends FrameworkTestCase
         yield 'invalid yaml' => [['x/index.md' => "---\ntitle: X\nsummary: Note: this breaks\n---\n"], 'pages/x/index.md: invalid YAML front matter:'];
         yield 'no front matter' => [['x/index.md' => 'Just text'], 'pages/x/index.md: missing YAML front matter'];
         yield 'missing title' => [['x/index.md' => "---\nsummary: S\n---\n"], 'pages/x/index.md: front matter needs a "title"'];
-        yield 'unknown key' => [['x/index.md' => "---\ntitle: X\ncolour: red\n---\n"], 'unknown front matter "colour" (title, summary, image, template, form, order, updated, cdn, data, slug; put anything else under "data")'];
+        yield 'unknown key' => [['x/index.md' => "---\ntitle: X\ncolour: red\n---\n"], 'unknown front matter "colour" (title, summary, image, template, form, order, updated, cdn, unlisted, data, slug; put anything else under "data")'];
         yield 'bad template' => [['x/index.md' => "---\ntitle: X\ntemplate: ../secret.twig\n---\n"], '"template" must be a template path such as pages/contact.twig'];
         yield 'order' => [['x/index.md' => "---\ntitle: X\norder: first\n---\n"], '"order" must be a whole number'];
         yield 'form' => [['x/index.md' => "---\ntitle: X\nform: [contact]\n---\n"], '"form" must be the name of a form in config/forms.php'];
         yield 'data' => [['x/index.md' => "---\ntitle: X\ndata: text\n---\n"], '"data" must be a mapping'];
         yield 'cdn' => [['x/index.md' => "---\ntitle: X\ncdn: no-thanks\n---\n"], '"cdn" is true or false'];
+        yield 'unlisted' => [['x/index.md' => "---\ntitle: X\nunlisted: yes please\n---\n"], '"unlisted" is true or false'];
         yield 'impossible updated' => [['x/index.md' => "---\ntitle: X\nupdated: 2026-04-31\n---\n"], 'x/index.md: "2026-04-31" (line 3) is not a date'];
         yield 'updated' => [['x/index.md' => "---\ntitle: X\nupdated: soon\n---\n"], 'front matter needs a "updated" in YYYY-MM-DD format'];
         yield 'language' => [['x/index.fr.md' => "---\ntitle: X\n---\n"], 'pages/x/index.fr.md: language "fr" is not configured'];

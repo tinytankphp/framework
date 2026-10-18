@@ -7,6 +7,10 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-18
+
+Found while building the first real TinyTank site (lab909.dev).
+
 ### Added
 
 - **Syntax highlighting for code blocks** (```php, ```twig…), when content compiles, with
@@ -14,6 +18,10 @@ change behaviour, and its notes say what to update in your site.
   elsewhere. Blocks are `<pre data-lang="php"><code class="language-php">` with `hl-*` classes for
   the colours; the skeleton's `resources/css/app.css` styles them. To get them in your site, copy the
   "Code blocks" rules from the skeleton's `app.css`. Unknown languages stay plain text.
+- **Unlisted content pages**: `unlisted: true` in a page's front matter keeps it reachable by its
+  URL but out of search engines (`noindex`), the sitemap, and menus that ask for
+  `where('unlisted', false)`. For a style guide, a thank-you page, a preview. To skip them in your
+  menus, add `.where('unlisted', false)` to their queries, as in the skeleton's `templates/_layout.twig`.
 
 ## [0.1.0] - 2026-10-15
 
@@ -68,5 +76,6 @@ The first tagged release. TinyTank is in beta: the API may still change between 
   want the same: `config/app.php` (`log` and `cdn` sections), `src/Controller/PageController.php`
   (`cdn: false` support), `config/routes.php` (blog page numbers up to 6 digits), `.env.example`.
 
-[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/tinytankphp/framework/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/tinytankphp/framework/releases/tag/v0.1.0

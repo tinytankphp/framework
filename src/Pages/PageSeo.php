@@ -9,7 +9,7 @@ use TinyTank\Seo\Seo;
 
 /**
  * Maps a page's front matter onto the page's SEO metadata: title, summary as meta description,
- * share image, plus a WebPage JSON-LD block.
+ * share image, noindex for an unlisted page, plus a WebPage JSON-LD block.
  *
  * @phpstan-import-type Page from Pages
  */
@@ -19,6 +19,9 @@ final class PageSeo
     public static function apply(Seo $seo, array $page): void
     {
         $seo->title($page['title'])->description($page['summary']);
+        if ($page['unlisted']) {
+            $seo->noindex(); // `unlisted: true`: reachable by its URL, kept out of search engines
+        }
         if ($page['image'] !== null) {
             $seo->image($page['image']);
         }
