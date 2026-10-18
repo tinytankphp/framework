@@ -134,6 +134,21 @@ final class PagesTest extends FrameworkTestCase
         self::assertStringContainsString('<p class="message">Not found.</p>', $this->body($response));
     }
 
+    public function testPagesAreQueriedByTheirData(): void
+    {
+        // A section of dated pages, three of them picked for the home page.
+        $app = $this->withPages([
+            'tools/index.md' => "---\ntitle: Tools\n---\n",
+            'tools/a/index.md' => "---\ntitle: A\ndata: {date: '2026-03-01', featured: true}\n---\n",
+            'tools/b/index.md' => "---\ntitle: B\ndata: {date: '2026-09-01'}\n---\n",
+            'tools/c/index.md' => "---\ntitle: C\ndata: {date: '2026-06-01', featured: true}\n---\n",
+        ]);
+        $tools = $app->pages()->where('parent', 'tools');
+
+        self::assertSame(['tools/b', 'tools/c', 'tools/a'], array_column($tools->orderBy('data.date desc')->all(), 'path'));
+        self::assertSame(['tools/c', 'tools/a'], array_column($tools->where('data.featured', true)->orderBy('data.date desc')->all(), 'path'));
+    }
+
     public function testMenusAndChildrenAreQueries(): void
     {
         $pages = $this->kernel()->pages();

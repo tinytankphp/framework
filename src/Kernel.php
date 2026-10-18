@@ -140,6 +140,7 @@ final class Kernel
             $config['log'] ?? [],
             $config['cdn'] ?? [],
             $config['theme']['default'] ?? 'system',
+            self::globals($config, $root),
         );
 
         // The app's extension point: services, Twig extensions and globals, deploy steps.
@@ -152,6 +153,24 @@ final class Kernel
         $app->forms->validate();
 
         return $app;
+    }
+
+    /**
+     * The site's own values for every template (`{{ globals.socials.github }}`): config/globals.php,
+     * optional, returns an array (nested as deep as you like). An override's `globals` replaces it.
+     *
+     * @param array<string, mixed> $config
+     *
+     * @return array<string, mixed>
+     */
+    private static function globals(array $config, string $root): array
+    {
+        $globals = $config['globals'] ?? (is_file($root . '/config/globals.php') ? require $root . '/config/globals.php' : []);
+        if (!is_array($globals)) {
+            throw new \UnexpectedValueException('config/globals.php returns an array, e.g. return [\'socials\' => [\'github\' => \'https://github.com/…\']]; (got ' . get_debug_type($globals) . ').');
+        }
+
+        return $globals;
     }
 
     /**
@@ -178,6 +197,8 @@ final class Kernel
      * @param array<string, mixed> $cdn      CDN caching and purging (config/app.php `cdn`); off by default
      * @param string               $themeDefault what visitors without a saved choice get (config/app.php
      *                                       `theme.default`): 'system', 'light' or 'dark'
+     * @param array<string, mixed> $globals  the site's own values for every template, as `globals`
+     *                                       (config/globals.php). Public: never put secrets there
      */
     public function __construct(
         public readonly string $root,
@@ -197,6 +218,7 @@ final class Kernel
         array $log = [],
         array $cdn = [],
         string $themeDefault = 'system',
+        public readonly array $globals = [],
     ) {
         $mediaUrl = rtrim($mediaUrl, '/');
         if ($mediaUrl !== '' && !preg_match('#^https://[^/\s?\#]+(/[^\s?\#]*)?$#', $mediaUrl)) {
@@ -276,6 +298,7 @@ final class Kernel
         $this->twig->addExtension($this->seo);
         $this->twig->addExtension($this->site);
         $this->twig->addExtension($this->translations);
+        $this->twig->addGlobal('globals', $globals);
         $this->twig->addExtension(new IntlExtension()); // format_date / format_number, localized with site.locale
         $this->twig->addFunction(new TwigFunction('path', $this->path(...)));
         // Content is queried, not injected: posts(), pages() and collection('faq') return a TinyTank\Query.

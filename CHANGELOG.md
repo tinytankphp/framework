@@ -12,6 +12,13 @@ change behaviour, and its notes say what to update in your site.
 - **A default theme** other than the system's: `'theme' => ['default' => 'dark']` (or `'light'`) in
   `config/app.php`. Visitors without a saved choice get it from the first paint; the inline script's
   CSP hash follows. Keep the layout's signal default the same (`data-signals="{_theme: 'dark'}"`).
+- **Global values**: `config/globals.php` returns an array (nested as deep as you like) that every
+  template reads as `globals`, like Craft's globals: `{{ globals.socials.github }}`. Optional; PHP
+  reads it as `$app->globals`. Public values only, never secrets.
+- **Paths inside a field in queries**: `where()`, `orderBy()` and `countBy()` accept
+  `pages().where('data.featured', true).orderBy('data.date desc')`, or a collection's array field
+  (`address.city`). Pages' `data` is now a query field (it wasn't, so pages couldn't be filtered or
+  sorted by it at all).
 - **`site.path`**: the current page's path without the language prefix, for menus that mark the
   current section (`site.path starts with '/projects'`).
 

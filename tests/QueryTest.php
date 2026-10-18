@@ -11,13 +11,13 @@ final class QueryTest extends FrameworkTestCase
 {
     private const ITEMS = [
         'en' => [
-            'b' => ['slug' => 'b', 'language' => 'en', 'title' => 'Banana', 'rank' => 2, 'tags' => ['fruit', 'yellow'], 'note' => null],
-            'a' => ['slug' => 'a', 'language' => 'en', 'title' => 'apple', 'rank' => 1, 'tags' => ['fruit'], 'note' => 'crisp'],
-            'c' => ['slug' => 'c', 'language' => 'en', 'title' => 'Carrot 10', 'rank' => 3, 'tags' => ['vegetable'], 'note' => null],
-            'd' => ['slug' => 'd', 'language' => 'en', 'title' => 'Carrot 9', 'rank' => null, 'tags' => [], 'note' => 'sweet'],
+            'b' => ['slug' => 'b', 'language' => 'en', 'title' => 'Banana', 'rank' => 2, 'tags' => ['fruit', 'yellow'], 'note' => null, 'data' => ['picked' => '2026-09-02', 'shop' => ['featured' => true]]],
+            'a' => ['slug' => 'a', 'language' => 'en', 'title' => 'apple', 'rank' => 1, 'tags' => ['fruit'], 'note' => 'crisp', 'data' => ['picked' => '2026-10-01', 'shop' => ['featured' => false]]],
+            'c' => ['slug' => 'c', 'language' => 'en', 'title' => 'Carrot 10', 'rank' => 3, 'tags' => ['vegetable'], 'note' => null, 'data' => ['picked' => '2026-08-15', 'shop' => ['featured' => true]]],
+            'd' => ['slug' => 'd', 'language' => 'en', 'title' => 'Carrot 9', 'rank' => null, 'tags' => [], 'note' => 'sweet', 'data' => []],
         ],
         'it' => [
-            'a' => ['slug' => 'a', 'language' => 'it', 'title' => 'Mela', 'rank' => 1, 'tags' => ['frutta'], 'note' => null],
+            'a' => ['slug' => 'a', 'language' => 'it', 'title' => 'Mela', 'rank' => 1, 'tags' => ['frutta'], 'note' => null, 'data' => []],
         ],
     ];
 
@@ -31,7 +31,7 @@ final class QueryTest extends FrameworkTestCase
             'it' => ['name' => 'Italiano', 'locale' => 'it_IT'],
         ]);
 
-        return new Query('fruits', self::items(...), ['slug', 'language', 'title', 'rank', 'tags', 'note'], ['title', 'tags'], $this->site, $perPage);
+        return new Query('fruits', self::items(...), ['slug', 'language', 'title', 'rank', 'tags', 'note', 'data'], ['title', 'tags'], $this->site, $perPage);
     }
 
     /** @return array<string, array<string, mixed>> the source: items by slug in a language */
@@ -96,6 +96,17 @@ final class QueryTest extends FrameworkTestCase
         self::assertSame('a,d,b,c', self::slugs($query->orderBy('note, slug')->all()), 'ties broken by the next field');
     }
 
+    public function testPathsInsideAField(): void
+    {
+        $query = $this->query();
+
+        self::assertSame('b,c', self::slugs($query->where('data.shop.featured', true)->all()), 'a page\'s data.…, a collection\'s array field');
+        self::assertSame('a,b,c,d', self::slugs($query->orderBy('data.picked desc')->all()), 'newest first, a missing value last');
+        self::assertSame('c,b', self::slugs($query->where('data.shop.featured', true)->orderBy('data.picked')->all()));
+        self::assertSame('d', self::slugs($query->where('data.picked', null)->all()), 'a missing value is null');
+        self::assertSame(['2026-09-02' => 1, '2026-10-01' => 1, '2026-08-15' => 1], $query->countBy('data.picked'), 'a missing value isn\'t counted');
+    }
+
     public function testLimitOffsetAndOne(): void
     {
         $query = $this->query();
@@ -151,6 +162,9 @@ final class QueryTest extends FrameworkTestCase
             fn () => $query->orderBy('colour'),
             fn () => $query->orderBy('title sideways'),
             fn () => $query->countBy('colour'),
+            fn () => $query->where('colour.name', 'red'),
+            fn () => $query->orderBy('colour.name'),
+            fn () => $query->orderBy('data..picked'),
             fn () => $query->limit(-1),
             fn () => $query->offset(-1),
         ] as $i => $call) {
@@ -161,7 +175,7 @@ final class QueryTest extends FrameworkTestCase
                 self::assertStringStartsWith('fruits:', $e->getMessage());
             }
         }
-        $this->expectExceptionMessage('fruits: no field "colour". Fields: slug, language, title, rank, tags, note.');
+        $this->expectExceptionMessage('fruits: no field "colour". Fields: slug, language, title, rank, tags, note, data.');
         $query->where('colour', 'red');
     }
 

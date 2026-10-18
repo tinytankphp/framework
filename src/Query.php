@@ -71,7 +71,8 @@ final class Query implements \IteratorAggregate, \Countable
 
     /**
      * Items whose field equals the value. A list of values matches any of them; on a list field
-     * (tags…), an item matches when the list contains the value.
+     * (tags…), an item matches when the list contains the value. A value inside a field is reachable
+     * by its path: a page's `where('data.featured', true)`, a collection's `where('address.city', 'Rome')`.
      *
      * @return self<TItem>
      */
@@ -81,7 +82,7 @@ final class Query implements \IteratorAggregate, \Countable
         $values = is_array($value) ? array_values($value) : [$value];
 
         return $this->filter(static function (array $item) use ($field, $values): bool {
-            $actual = $item[$field];
+            $actual = self::value($item, $field);
 
             return is_array($actual)
                 ? array_intersect(array_map('strval', $actual), array_map('strval', $values)) !== []
@@ -134,8 +135,8 @@ final class Query implements \IteratorAggregate, \Countable
     }
 
     /**
-     * Sorting, replacing the default order: 'date desc', 'order', 'name asc, joined desc'. Items
-     * without a value come last; text compares naturally and case-insensitively.
+     * Sorting, replacing the default order: 'date desc', 'order', 'name asc, joined desc',
+     * 'data.date desc'. Items without a value come last; text compares naturally and case-insensitively.
      *
      * @return self<TItem>
      */
@@ -143,7 +144,7 @@ final class Query implements \IteratorAggregate, \Countable
     {
         $parsed = [];
         foreach (array_filter(array_map('trim', explode(',', $order))) as $part) {
-            if (!preg_match('/^([a-z_][a-z0-9_]*)(?:\s+(asc|desc))?$/i', $part, $m)) {
+            if (!preg_match('/^([a-z_][a-z0-9_]*(?:\.[a-z0-9_-]+)*)(?:\s+(asc|desc))?$/i', $part, $m)) {
                 throw new \InvalidArgumentException("{$this->label}: invalid orderBy \"{$part}\", e.g. 'date desc'.");
             }
             $this->assertField($m[1]);
@@ -239,7 +240,7 @@ final class Query implements \IteratorAggregate, \Countable
         $this->assertField($field);
         $counts = [];
         foreach ($this->matching() as $item) {
-            foreach ((array) $item[$field] as $value) { // (array) null is []: missing values aren't counted
+            foreach ((array) self::value($item, $field) as $value) { // (array) null is []: missing values aren't counted
                 $counts[(string) $value] = ($counts[(string) $value] ?? 0) + 1;
             }
         }
@@ -280,7 +281,7 @@ final class Query implements \IteratorAggregate, \Countable
             $order = $this->order;
             usort($items, static function (array $a, array $b) use ($order): int {
                 foreach ($order as [$field, $descending]) {
-                    [$x, $y] = [$a[$field], $b[$field]];
+                    [$x, $y] = [self::value($a, $field), self::value($b, $field)];
                     if ($x === null || $y === null) {
                         $result = ($x === null) <=> ($y === null); // missing values last, either direction
                     } else {
@@ -299,9 +300,32 @@ final class Query implements \IteratorAggregate, \Countable
         return $items;
     }
 
+    /**
+     * A field's value, or a value inside one by its dotted path ('data.date'); null when missing.
+     *
+     * @param array<string, mixed> $item
+     */
+    private static function value(array $item, string $field): mixed
+    {
+        if (!str_contains($field, '.')) {
+            return $item[$field];
+        }
+        $value = $item;
+        foreach (explode('.', $field) as $key) {
+            if (!is_array($value) || !array_key_exists($key, $value)) {
+                return null;
+            }
+            $value = $value[$key];
+        }
+
+        return $value;
+    }
+
     private function assertField(string $field): void
     {
-        if (!in_array($field, $this->fields, true)) {
+        // A path inside a field (a page's `data`, a collection's array field): its keys are the site's
+        // own, so only the field itself is checked.
+        if (!in_array(explode('.', $field, 2)[0], $this->fields, true)) {
             throw new \InvalidArgumentException("{$this->label}: no field \"{$field}\". Fields: " . implode(', ', $this->fields) . '.');
         }
     }

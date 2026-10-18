@@ -55,7 +55,7 @@ final class Pages
     /** A page path, for the route requirement: segments of lowercase letters, digits and dashes. */
     public const PATH = '[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*)*';
 
-    public const QUERY_FIELDS = ['slug', 'path', 'uri', 'parent', 'depth', 'language', 'title', 'summary', 'image', 'template', 'form', 'order', 'updated', 'unlisted'];
+    public const QUERY_FIELDS = ['slug', 'path', 'uri', 'parent', 'depth', 'language', 'title', 'summary', 'image', 'template', 'form', 'order', 'updated', 'unlisted', 'data'];
     public const SEARCH_FIELDS = ['title', 'summary'];
 
     private const FRONT_MATTER = ['title', 'summary', 'image', 'template', 'form', 'order', 'updated', 'cdn', 'unlisted', 'data', 'slug'];
