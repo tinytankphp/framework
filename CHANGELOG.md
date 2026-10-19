@@ -24,8 +24,12 @@ change behaviour, and its notes say what to update in your site.
   (an item, a slug, a page's path, or a list); `query.neighbours(item, wrap: true)` for its previous
   and next items in the query's order, for "previous / next" links.
 
+- **Reading time for pages and collection items**: `reading_minutes`, as posts have.
+
 ### Changed
 
+- **`assets` and `reading_minutes` are reserved in collections** (TinyTank sets them): a field with
+  either name is now refused, with a message. Rename it if you have one.
 - **Error messages suggest the fix**: a typo in a query field, a collection field or a page's front
   matter gets "Did you mean "summary"?"; `'?metrics' => 'array'` says the `?` goes on the type
   (`'metrics' => '?array'`); a camelCase field name gets its snake_case form; a missing collection

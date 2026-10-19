@@ -26,7 +26,7 @@ final class Schema
     public const TYPES = ['string', 'int', 'float', 'bool', 'date', 'url', 'markdown', 'list', 'array'];
 
     /** Keys every item has, so fields can't use them. */
-    public const RESERVED = ['slug', 'language', 'html', 'components', 'source'];
+    public const RESERVED = ['slug', 'language', 'html', 'components', 'source', 'assets', 'reading_minutes'];
 
     /** @var array<string, array{string, bool}> field => [type, required] */
     public readonly array $fields;

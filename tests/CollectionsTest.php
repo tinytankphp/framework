@@ -51,7 +51,7 @@ final class CollectionsTest extends FrameworkTestCase
         self::assertSame(['what', 'install', 'later'], array_column($faq->all(), 'slug'));
         self::assertSame(3, count($faq));
         $install = $faq->slug('install')->one();
-        self::assertSame(['slug' => 'install', 'language' => 'en', 'question' => 'How do I install it?', 'order' => 2, 'tags' => ['setup'], 'html' => '<p>Run <strong>composer</strong>.</p>', 'components' => [], 'source' => 'faq/install.md', 'assets' => []], $install);
+        self::assertSame(['slug' => 'install', 'language' => 'en', 'question' => 'How do I install it?', 'order' => 2, 'tags' => ['setup'], 'html' => '<p>Run <strong>composer</strong>.</p>', 'components' => [], 'source' => 'faq/install.md', 'assets' => [], 'reading_minutes' => 1], $install);
         self::assertNull($faq->slug('what')->one()['tags'] ?? null, 'optional fields are null when missing');
         self::assertSame('', $faq->slug('later')->one()['html'] ?? null);
 
@@ -118,7 +118,7 @@ final class CollectionsTest extends FrameworkTestCase
 
         self::assertSame(['install', 'later'], array_column($faq->where('tags', 'setup')->all(), 'slug'), 'a list field contains the value');
         self::assertSame(['what'], array_column($faq->where('order', 1)->all(), 'slug'));
-        $this->expectExceptionMessage('collection "faq": no field "nope". Fields: slug, language, question, order, tags.');
+        $this->expectExceptionMessage('collection "faq": no field "nope". Fields: slug, language, question, order, tags, reading_minutes.');
         $faq->where('nope', 1);
     }
 
@@ -211,6 +211,9 @@ final class CollectionsTest extends FrameworkTestCase
             'faq/folder/notes.pdf' => '%PDF-1.4',
         ]);
 
+        $long = $app->collection('faq')->slug('folder')->one();
+        self::assertSame(1, $long['reading_minutes'] ?? null);
+
         // A url field naming a file in the folder: its public URL, which image() makes responsive.
         $cleo = $app->collection('team')->slug('cleo')->one() ?? [];
         self::assertSame('/media/collections/team/cleo/portrait.png', $cleo['photo'] ?? null);
@@ -256,6 +259,7 @@ final class CollectionsTest extends FrameworkTestCase
         yield '? on the name' => [['faq' => ['fields' => ['?q' => 'array']]], 'field "?q": an optional field puts the ? on its type, \'q\' => \'?array\'.'];
         yield 'camelCase name' => [['faq' => ['fields' => ['featuredOrder' => 'int']]], 'field "featuredOrder": names use lowercase letters, digits and underscores, e.g. "featured_order".'];
         yield 'reserved field' => [['faq' => ['fields' => ['html' => 'string']]], '"html" is set by TinyTank and can\'t be a field'];
+        yield 'assets field' => [['faq' => ['fields' => ['assets' => 'list']]], '"assets" is set by TinyTank and can\'t be a field'];
         yield 'bad name' => [['FAQ-list' => ['fields' => ['q' => 'string']]], 'collection names use lowercase letters, digits and underscores'];
         yield 'reserved name' => [['blog' => ['fields' => ['q' => 'string']]], '"blog" is reserved'];
         yield 'unknown option' => [['faq' => ['fields' => ['q' => 'string'], 'order' => 'q']], 'unknown option "order"'];

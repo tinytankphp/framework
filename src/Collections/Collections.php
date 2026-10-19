@@ -82,7 +82,7 @@ final class Collections
         return new Query(
             "collection \"{$name}\"",
             fn (string $language) => $this->compiled()[$language][$name] ?? [],
-            ['slug', 'language', ...array_keys($schema->fields)],
+            ['slug', 'language', ...array_keys($schema->fields), 'reading_minutes'],
             $plain,
             $this->site,
         );
@@ -225,6 +225,7 @@ final class Collections
                     $item = ['slug' => $slug, 'language' => $language]
                         + $schema->item($data, $source, $markdown, $original, $folder)
                         + ['html' => $inherit ? $original['html'] : $html, 'components' => $inherit ? $original['components'] : $components, 'source' => $source, 'assets' => $assets];
+                    $item['reading_minutes'] = MarkdownParser::readingMinutes($item['html']);
                     $versions[$slug][$language] = $item;
                     $original ??= $item;
                 }

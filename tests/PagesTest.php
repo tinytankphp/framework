@@ -150,10 +150,11 @@ final class PagesTest extends FrameworkTestCase
         self::assertSame('tools/special.twig', $template('tools/b'), 'a page\'s own template wins');
         self::assertNull($template('tools'), 'not the parent itself');
         self::assertNull($template('tools/a/deeper'), 'children only, not grandchildren');
+        self::assertSame(1, $app->pages()->where('path', 'tools/a')->one()['reading_minutes'] ?? null, 'reading time, as posts have');
 
         // Pages are told apart by path: tools/a/deeper and a top-level "deeper" would share a slug.
         $children = $app->pages()->where('parent', 'tools');
-        self::assertSame(['tools/b'], array_column($children->except($app->pages()->where('path', 'tools/a')->one() ?? [])->all(), 'path'));
+        self::assertSame(['tools/b'], array_column($children->except('tools/a')->all(), 'path'));
         self::assertSame('tools/b', $children->neighbours('tools/a')['next']['path'] ?? null);
     }
 

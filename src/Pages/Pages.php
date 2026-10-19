@@ -45,7 +45,7 @@ use TinyTank\Suggest;
  * Query pages with `pages()` (see TinyTank\Query); a page without a version in a language doesn't
  * exist there. Compiled into var/cache/pages.php without APP_DEBUG, like the blog.
  *
- * @phpstan-type Page array{slug: string, path: string, uri: string, parent: string, depth: int, language: string, title: string, summary: string, image: ?string, template: ?string, children: array{template?: string}, form: ?string, order: ?int, updated: ?string, cdn: bool, unlisted: bool, data: array<mixed>, html: string, components: list<ComponentCall>, source: string, assets: list<string>}
+ * @phpstan-type Page array{slug: string, path: string, uri: string, parent: string, depth: int, language: string, title: string, summary: string, image: ?string, template: ?string, children: array{template?: string}, form: ?string, order: ?int, updated: ?string, cdn: bool, unlisted: bool, data: array<mixed>, reading_minutes: int, html: string, components: list<ComponentCall>, source: string, assets: list<string>}
  *
  * @phpstan-import-type ComponentCall from MarkdownParser
  */
@@ -57,7 +57,7 @@ final class Pages
     /** A page path, for the route requirement: segments of lowercase letters, digits and dashes. */
     public const PATH = '[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*)*';
 
-    public const QUERY_FIELDS = ['slug', 'path', 'uri', 'parent', 'depth', 'language', 'title', 'summary', 'image', 'template', 'form', 'order', 'updated', 'unlisted', 'data'];
+    public const QUERY_FIELDS = ['slug', 'path', 'uri', 'parent', 'depth', 'language', 'title', 'summary', 'image', 'template', 'form', 'order', 'updated', 'unlisted', 'data', 'reading_minutes'];
     public const SEARCH_FIELDS = ['title', 'summary'];
 
     private const FRONT_MATTER = ['title', 'summary', 'image', 'template', 'children', 'form', 'order', 'updated', 'cdn', 'unlisted', 'data', 'slug'];
@@ -364,6 +364,7 @@ final class Pages
             'cdn' => $cdn,
             'unlisted' => $unlisted,
             'data' => $data,
+            'reading_minutes' => MarkdownParser::readingMinutes($html),
             'html' => $html,
             'components' => $components,
             'source' => $source,

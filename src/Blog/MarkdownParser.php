@@ -142,8 +142,6 @@ final class MarkdownParser
         }
 
         $html = $result->getContent();
-        $text = trim(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-        $words = $text === '' ? 0 : count(preg_split('/\s+/u', $text) ?: []); // str_word_count() splits accented words
 
         return [
             'slug' => $slug,
@@ -165,7 +163,7 @@ final class MarkdownParser
                 ? array_values(array_unique(array_map(static fn ($tag) => strtolower(trim((string) $tag)), (array) $meta['tags'])))
                 : $original['tags'] ?? [],
             'draft' => $draft,
-            'reading_minutes' => max(1, (int) ceil($words / 220)),
+            'reading_minutes' => self::readingMinutes($html),
             'html' => $html,
             'components' => $this->components,
             'source' => $source,
@@ -341,6 +339,15 @@ final class MarkdownParser
         }
 
         return $assetUrl . '/' . $path;
+    }
+
+    /** Minutes to read rendered HTML, at 220 words a minute; at least 1. */
+    public static function readingMinutes(string $html): int
+    {
+        $text = trim(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $words = $text === '' ? 0 : count(preg_split('/\s+/u', $text) ?: []); // str_word_count() splits accented words
+
+        return max(1, (int) ceil($words / 220));
     }
 
     /** The first paragraph with text, up to 200 characters: the default summary. */
