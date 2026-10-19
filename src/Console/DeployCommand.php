@@ -292,7 +292,7 @@ final class DeployCommand extends Command
      *
      * @return array{int, int, list<string>} videos, posters downloaded, videos without a poster
      */
-    private static function fetchEmbeds(Kernel $app): array
+    public static function fetchEmbeds(Kernel $app): array
     {
         $videos = [];
         foreach (array_keys($app->site->languages) as $language) {

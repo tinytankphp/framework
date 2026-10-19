@@ -7,6 +7,15 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+### Added
+
+- **Static builds, first step**: `bin/console build:static` renders the whole site into plain files
+  (`deploy/` by default) for a static host: every page found by following links from the home
+  page, the sitemap, the feed and robots.txt, written as `<path>/index.html`, with `public/`, the
+  published media and `404.html`. It reports by page what needs the server (Datastar server actions,
+  forms) and stops on broken links. `site.static` tells templates. Config: `static.out`,
+  `static.base_url`, `static.paths`. Host files and static search and forms come next.
+
 ## [0.1.6] - 2026-10-19
 
 What the lab909.dev retrospective asked for. One change to check in an existing site: collections

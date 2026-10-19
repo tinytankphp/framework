@@ -28,6 +28,8 @@ final class Site extends AbstractExtension implements GlobalsInterface
     /** Current path without the language prefix, e.g. "/blog" for /it/blog. */
     private string $path = '/';
 
+    private bool $static = false;
+
     /** @var array<string, string>|null language => path where the current page exists; null = every language */
     private ?array $alternates = null;
 
@@ -133,7 +135,6 @@ final class Site extends AbstractExtension implements GlobalsInterface
 
     // --- Current request -----------------------------------------------------
 
-    /** Current language code, e.g. "it". */
     /**
      * The current page's path, without the language prefix: '/projects/page/2' on /it/projects/page/2.
      * For menus that mark where the visitor is: `site.path starts with '/projects'`.
@@ -143,6 +144,22 @@ final class Site extends AbstractExtension implements GlobalsInterface
         return $this->path;
     }
 
+    /**
+     * Whether the pages are being rendered into a static build (`bin/console build:static`): no PHP
+     * will answer the visitor, so templates can leave out what needs it. `{% if not site.static %}`.
+     */
+    public function isStatic(): bool
+    {
+        return $this->static;
+    }
+
+    /** Called by the static build before rendering. */
+    public function markStatic(): void
+    {
+        $this->static = true;
+    }
+
+    /** Current language code, e.g. "it". */
     public function language(): string
     {
         return $this->language;
