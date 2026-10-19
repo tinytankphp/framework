@@ -26,6 +26,10 @@ change behaviour, and its notes say what to update in your site.
 
 - **Reading time for pages and collection items**: `reading_minutes`, as posts have.
 
+- **`bin/console site:clean`** removes a site's starter examples: the files listed in `.examples` and
+  the blocks between `example:start` and `example:end` lines in its config, templates and tests. It
+  lists everything first and asks (`--dry-run`, `--force`). `deploy` warns while `.examples` exists.
+
 ### Changed
 
 - **`assets` and `reading_minutes` are reserved in collections** (TinyTank sets them): a field with
@@ -43,6 +47,11 @@ change behaviour, and its notes say what to update in your site.
 
 ### Skeleton
 
+- **The examples come off in one step**: `create-project` asks whether to keep them (the Datastar
+  demos, the FAQ, the sample posts, the Italian translation); `php bin/console site:clean` removes
+  them later, with their tests, leaving an English site that passes its tests (a test cleans a copy
+  of the skeleton and runs the copy's suite). The home page is now a neutral template including
+  `_examples/home.twig`; the image, video and no-JavaScript browser tests use the style guide.
 - **Gentler reduced motion** (`resources/css/app.css`): visitors who ask for less motion still get
   colour and opacity fades; only movement and animations stop. An effect the visitor switched on
   knowingly can keep moving with the class `motion-allowed`. Put hover movement behind

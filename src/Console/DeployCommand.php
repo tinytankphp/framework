@@ -125,6 +125,9 @@ final class DeployCommand extends Command
         }
 
         $io->title('TinyTank deploy');
+        if ((new Examples($this->root))->present()) {
+            $io->warning('This site still has TinyTank\'s starter examples (demos, sample posts, the sample translation). Remove them with `php bin/console site:clean`.');
+        }
         foreach ($steps as $name => $step) {
             if (in_array($name, $skip, true)) {
                 continue;

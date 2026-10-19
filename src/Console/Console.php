@@ -38,6 +38,7 @@ final class Console
         $console->addCommand(new DeployCommand($root, $boot));
         $console->addCommand(new CacheClearCommand($root));
         $console->addCommand(new CdnPurgeCommand($boot));
+        $console->addCommand(new SiteCleanCommand($root));
         foreach (self::discover($commandDir ?? $root . '/src/Command', $namespace) as $class) {
             $command = new $class();
             if ($command instanceof AppCommand) {

@@ -182,6 +182,50 @@ final class ConsoleTest extends FrameworkTestCase
         self::assertSame([], array_values(array_diff((array) scandir("{$root}/public/media/pages"), ['.', '..'])));
     }
 
+    public function testSiteCleanAsksListsAndRemovesTheExamples(): void
+    {
+        $root = $this->project();
+        self::write($root, [
+            '.examples' => "templates/demo.twig\n",
+            'templates/demo.twig' => 'demo',
+            'config/extra.php' => "<?php\n// example:start\n\$demo = true;\n// example:end\n",
+        ]);
+        $tester = new CommandTester($this->console($root)->find('site:clean'));
+
+        $tester->execute(['--dry-run' => true]);
+        self::assertStringContainsString('templates/demo.twig', $tester->getDisplay());
+        self::assertStringContainsString('config/extra.php (1)', $tester->getDisplay());
+        self::assertFileExists("{$root}/templates/demo.twig", 'a dry run changes nothing');
+
+        $tester->setInputs(['no']);
+        $tester->execute([]);
+        self::assertFileExists("{$root}/templates/demo.twig", 'answering no changes nothing');
+
+        $tester->setInputs(['yes']);
+        $tester->execute([]);
+        self::assertSame(Command::SUCCESS, $tester->getStatusCode());
+        self::assertFileDoesNotExist("{$root}/templates/demo.twig");
+        self::assertSame("<?php\n", file_get_contents("{$root}/config/extra.php"));
+        self::assertStringContainsString('The examples are gone.', $tester->getDisplay());
+
+        $tester->execute([]);
+        self::assertStringContainsString('already clean', $tester->getDisplay());
+    }
+
+    public function testDeployWarnsWhileTheExamplesAreThere(): void
+    {
+        $root = $this->project();
+        self::write($root, ['.examples' => "templates/demo.twig\n"]);
+
+        $tester = $this->deploy($root, ['--skip' => 'composer', '--opcache' => 'none']);
+        self::assertSame(Command::SUCCESS, $tester->getStatusCode(), 'a warning, not an error');
+        self::assertStringContainsString('still has TinyTank\'s starter examples', self::text($tester));
+        self::assertStringContainsString('php bin/console site:clean', self::text($tester));
+
+        unlink("{$root}/.examples");
+        self::assertStringNotContainsString('starter examples', self::text($this->deploy($root, ['--skip' => 'composer', '--opcache' => 'none'])));
+    }
+
     public function testCacheClearRestoresTheDevelopmentAutoloaderAfterADeploy(): void
     {
         $root = $this->project();
