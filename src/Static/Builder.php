@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace TinyTank\Static;
 
 use Symfony\Component\HttpFoundation\Request;
+use TinyTank\Forms\Forms;
 use TinyTank\Kernel;
 
 /**
@@ -31,19 +32,23 @@ final class Builder
 
     private readonly HostAdapter $host;
 
-    /** @param list<string> $paths extra URL paths to render (`static.paths`) */
+    /**
+     * @param list<string>         $paths   extra URL paths to render (`static.paths`)
+     * @param array<string, mixed> $options the host's settings (`static` in config/app.php)
+     */
     public function __construct(
         private readonly Kernel $app,
         private readonly string $out,
         private readonly array $paths = [],
         ?HostAdapter $host = null,
+        private readonly array $options = [],
     ) {
-        $this->host = $host ?? new Host\CloudflarePages();
+        $this->host = $host ?? new Host\Cloudflare();
     }
 
     public function run(): Build
     {
-        $build = new Build($this->out, $this->app->site->baseUrl);
+        $build = new Build($this->out, $this->app->site->baseUrl, $this->app->site->name(), $this->options);
         $this->app->site->markStatic();
 
         // Files first, so links to them are checked against what's really there.
@@ -74,6 +79,14 @@ final class Builder
             }
         }
 
+        // Each form page's "sent" state, which the host sends visitors to: the page with ?sent=1, as
+        // the PHP site shows it after a post without JavaScript.
+        foreach ($build->forms as $form) {
+            foreach (array_keys($form['pages']) as $page) {
+                $this->render(rtrim($page, '/') . '/sent', $build, $page . '?sent=1');
+            }
+        }
+
         // The error page, for the host to serve on unknown URLs.
         $missing = $this->app->handle(Request::create($this->app->site->baseUrl . '/__tinytank-static-404'));
         $this->write('404.html', (string) $missing->getContent());
@@ -86,10 +99,14 @@ final class Builder
         return $build;
     }
 
-    /** @return list<string> the internal links of what was rendered */
-    private function render(string $path, Build $build): array
+    /**
+     * @param string|null $source the URL to render instead of $path (the "sent" state: /contact?sent=1)
+     *
+     * @return list<string> the internal links of what was rendered
+     */
+    private function render(string $path, Build $build, ?string $source = null): array
     {
-        $response = $this->app->handle(Request::create($this->app->site->baseUrl . $path));
+        $response = $this->app->handle(Request::create($this->app->site->baseUrl . ($source ?? $path)));
         $status = $response->getStatusCode();
         if ($response->isRedirection()) {
             $to = $this->internal((string) $response->headers->get('Location'));
@@ -121,6 +138,7 @@ final class Builder
         $build->pages[$path] = ['file' => $file, 'type' => $type, 'headers' => $headers];
 
         if (str_starts_with($type, 'text/html')) {
+            $this->forms($body, $path, $build);
             $dynamic = $this->dynamic($body);
             if ($dynamic !== []) {
                 $build->dynamic[$path] = $dynamic;
@@ -145,6 +163,9 @@ final class Builder
         if (preg_match_all('#<form\b[^>]*\bmethod="post"[^>]*>#i', $html, $forms)) {
             foreach ($forms[0] as $form) {
                 $action = preg_match('#\baction="([^"]*)"#', $form, $m) ? html_entity_decode($m[1]) : '';
+                if ($this->staticForm($action) !== null) {
+                    continue; // answered by the host
+                }
                 if ($this->internal($action === '' ? '/' : $action) !== null) {
                     $found[] = 'a form posting to the site (' . ($action ?: 'this page') . ')';
                 }
@@ -152,6 +173,87 @@ final class Builder
         }
 
         return array_values(array_unique($found));
+    }
+
+    /** The form a static build's action posts to (/forms/contact → contact), if it's one the host answers. */
+    private function staticForm(string $action): ?string
+    {
+        if (!preg_match('#^' . preg_quote(Forms::STATIC_URL, '#') . '/([a-z][a-z0-9_-]*)$#', $action, $m)) {
+            return null;
+        }
+        $form = $this->app->forms->forms[$m[1]] ?? null;
+
+        return $form?->static !== null ? $m[1] : null;
+    }
+
+    /** Records the static forms on a page, with what the host needs to answer them. */
+    private function forms(string $html, string $path, Build $build): void
+    {
+        preg_match_all('#<form\b[^>]*\baction="([^"]*)"#i', $html, $actions);
+        foreach ($actions[1] as $action) {
+            $name = $this->staticForm(html_entity_decode($action));
+            if ($name === null || str_ends_with($path, '/sent')) {
+                continue;
+            }
+            $language = $this->app->site->language();
+            $build->forms[$name] ??= $this->formData($name);
+            $build->forms[$name]['pages'][$path] = $language;
+            foreach (array_keys($this->app->site->languages) as $code) {
+                if (!isset($build->forms[$name]['messages'][$code]) && ($code === $language || in_array($code, $build->forms[$name]['pages'], true))) {
+                    $build->forms[$name]['messages'][$code] = $this->messages($code);
+                    $build->forms[$name]['subject'][$code] = $this->subject($name, $code);
+                }
+            }
+        }
+    }
+
+    /** @return array{pages: array<string, string>, fields: array<string, array{type: string, required: bool, min: ?int, max: int, choices: list<string>}>, to: list<string>, from: string, reply_to: ?string, honeypot: bool, max_links: ?int, subject: array<string, string>, messages: array<string, array<string, string>>} */
+    private function formData(string $name): array
+    {
+        $form = $this->app->forms->get($name);
+        if ($form->to === []) {
+            throw new \RuntimeException("Form \"{$name}\" has no recipient: set \"to\" in config/forms.php (for a static build, an address the host can send to).");
+        }
+
+        return [
+            'pages' => [],
+            'fields' => $form->fields,
+            'to' => $form->to,
+            'from' => (string) ($form->static['from'] ?? ''),
+            'reply_to' => $form->replyTo,
+            'honeypot' => $form->honeypot(),
+            'max_links' => $form->maxLinks(),
+            'subject' => [],
+            'messages' => [],
+        ];
+    }
+
+    /** @return array<string, string> the texts the host shows or checks with, in a language */
+    private function messages(string $language): array
+    {
+        $t = fn (string $text, array $params = []) => $this->app->t($text, $params, $language);
+
+        return [
+            'required' => $t('This field is required.'),
+            'email' => $t('Enter a valid email address.'),
+            'choice' => $t('Choose one of the options.'),
+            'min' => $t('Use at least {min} characters.', ['min' => '{min}']),
+            'max' => $t('Use at most {max} characters.', ['max' => '{max}']),
+            'links' => $t('Please include at most {max} links.', ['max' => '{max}']),
+            'not_sent' => $t('Your message wasn\'t sent.'),
+            'check' => $t('Please check these and send it again:'),
+            'back' => $t('Back to the form'),
+            'failed' => $t('Sending didn\'t work just now. Please try again in a few minutes.'),
+        ];
+    }
+
+    /** The subject in a language, with the fields as placeholders for the host: "Message from {name}". */
+    private function subject(string $name, string $language): string
+    {
+        $form = $this->app->forms->get($name);
+        $placeholders = array_combine(array_keys($form->fields), array_map(static fn (string $field) => '{' . $field . '}', array_keys($form->fields)));
+
+        return $this->app->t($form->subject, ['form' => $name, 'site' => $this->app->site->name($language)] + $placeholders, $language);
     }
 
     /** @return list<string> internal page links to render; missing files are errors */

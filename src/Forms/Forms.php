@@ -128,6 +128,21 @@ final class Forms
         return implode('', array_map(static fn (SpamCheck $check) => $check->markup($form), $this->checks($form)));
     }
 
+    /** Where a static build's form posts: /forms/<name>, answered by the host (TinyTank\\Static). */
+    public const STATIC_URL = '/forms';
+
+    /**
+     * The markup a static build puts in a form: what works without this server (the honeypot), and
+     * the page the form is on, for the host to send the visitor back to, in the page's language.
+     */
+    public function staticMarkup(string $form, string $page): string
+    {
+        $form = $this->get($form);
+        $honeypot = $form->honeypot() ? (new Spam\Honeypot())->markup($form) : '';
+
+        return $honeypot . '<input type="hidden" name="_page" value="' . htmlspecialchars($page, ENT_QUOTES | ENT_HTML5) . '">';
+    }
+
     /** A form's state before anything was sent: for the page that shows it. */
     public function blank(string $form): Submission
     {

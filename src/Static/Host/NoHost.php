@@ -27,6 +27,9 @@ final class NoHost implements HostAdapter
 
     public function files(Build $build): array
     {
+        if ($build->forms !== []) {
+            throw new \RuntimeException('Forms with a static sender (' . implode(', ', array_keys($build->forms)) . ') need a host that runs code to send them: use the "cloudflare" host, or remove `static` from them in config/forms.php.');
+        }
         $files = [];
         foreach ($build->redirects as $from => $redirect) {
             $to = htmlspecialchars($redirect['to'], ENT_QUOTES | ENT_HTML5);

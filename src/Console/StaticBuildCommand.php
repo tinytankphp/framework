@@ -13,7 +13,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use TinyTank\Cache;
 use TinyTank\Kernel;
 use TinyTank\Static\Builder;
-use TinyTank\Static\Host\CloudflarePages;
+use TinyTank\Static\Host\Cloudflare;
 use TinyTank\Static\Host\NoHost;
 use TinyTank\Static\HostAdapter;
 
@@ -24,7 +24,7 @@ final class StaticBuildCommand extends Command
     public const MARKER = '.tinytank-static';
 
     /** The built-in hosts, by the name config/app.php uses. */
-    public const HOSTS = ['cloudflare' => CloudflarePages::class, 'none' => NoHost::class];
+    public const HOSTS = ['cloudflare' => Cloudflare::class, 'none' => NoHost::class];
 
     /** The site's own folders: never an output. */
     private const PROTECTED = ['bin', 'config', 'content', 'public', 'resources', 'src', 'templates', 'tests', 'translations', 'var', 'vendor', 'node_modules', '.git'];
@@ -81,7 +81,7 @@ final class StaticBuildCommand extends Command
         }
         $paths = array_values(array_filter((array) ($static['paths'] ?? []), 'is_string'));
         try {
-            $build = (new Builder($app, $out, $paths, $host))->run();
+            $build = (new Builder($app, $out, $paths, $host, array_diff_key($static, array_flip(['out', 'base_url', 'paths', 'host']))))->run();
         } catch (\RuntimeException $e) {
             $io->error($e->getMessage()); // past the host's limits
 

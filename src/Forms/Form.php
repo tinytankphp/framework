@@ -19,6 +19,7 @@ namespace TinyTank\Forms;
  *       'subject' => 'Message from {name}',     // translated, with the values as placeholders
  *       'reply_to' => 'email',                  // default: the first email field
  *       'spam' => ['honeypot', 'timing' => 3, 'max_links' => 2, 'rate_limit' => '5/hour'],
+ *       'static' => ['from' => 'contact@forms.example.com'], // static builds: sent by the host (see Static)
  *   ],
  *
  * Validation messages are UI texts (translations/<code>.php), so they follow the page's language.
@@ -45,6 +46,9 @@ final class Form
     /** @var array<string|int, mixed> spam check name => option (or a list of names) */
     public readonly array $spam;
 
+    /** @var array{from: string}|null how a static build's host sends it; null: not in static builds */
+    public readonly ?array $static;
+
     /** @param array<mixed> $config */
     public function __construct(public readonly string $name, array $config)
     {
@@ -52,9 +56,9 @@ final class Form
         if (!preg_match('/^[a-z][a-z0-9_-]*$/', $name)) {
             throw new \InvalidArgumentException("{$where}: form names use lowercase letters, digits, dashes and underscores.");
         }
-        $unknown = array_diff(array_keys($config), ['fields', 'to', 'subject', 'reply_to', 'spam']);
+        $unknown = array_diff(array_keys($config), ['fields', 'to', 'subject', 'reply_to', 'spam', 'static']);
         if ($unknown !== []) {
-            throw new \InvalidArgumentException("{$where}: unknown option \"" . implode('", "', $unknown) . '" (fields, to, subject, reply_to, spam).');
+            throw new \InvalidArgumentException("{$where}: unknown option \"" . implode('", "', $unknown) . '" (fields, to, subject, reply_to, spam, static).');
         }
         if (!is_array($config['fields'] ?? null) || $config['fields'] === []) {
             throw new \InvalidArgumentException("{$where}: needs \"fields\".");
@@ -99,6 +103,27 @@ final class Form
         $this->replyTo = $replyTo ?? ($emails[0] ?? null);
 
         $this->spam = (array) ($config['spam'] ?? ['honeypot', 'timing' => 3, 'max_links' => 2, 'rate_limit' => '5/hour']);
+
+        $static = $config['static'] ?? null;
+        if ($static !== null && (!is_array($static) || array_keys($static) !== ['from'] || filter_var($static['from'], FILTER_VALIDATE_EMAIL) === false)) {
+            throw new \InvalidArgumentException("{$where}: \"static\" is ['from' => 'an address of yours'], the sender when a static site's host sends the form.");
+        }
+        $this->static = $static !== null ? ['from' => (string) $static['from']] : null;
+    }
+
+    /** The spam checks' options: honeypot on, links allowed (null: no limit). */
+    public function honeypot(): bool
+    {
+        return in_array('honeypot', $this->spam, true) || array_key_exists('honeypot', $this->spam);
+    }
+
+    public function maxLinks(): ?int
+    {
+        if (array_key_exists('max_links', $this->spam)) {
+            return is_int($this->spam['max_links']) ? $this->spam['max_links'] : 2;
+        }
+
+        return in_array('max_links', $this->spam, true) ? 2 : null;
     }
 
     /**

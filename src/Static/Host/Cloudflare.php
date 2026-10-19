@@ -8,9 +8,13 @@ use TinyTank\Static\Build;
 use TinyTank\Static\HostAdapter;
 
 /**
- * Cloudflare Pages: pages as <path>.html, which Pages serves at the same URL without a trailing slash
- * (/about from about.html, and /about.html or /about/ redirect there), plus `_headers` and
- * `_redirects` (https://developers.cloudflare.com/pages/configuration/headers/ and /redirects/).
+ * Cloudflare Workers with static assets (https://developers.cloudflare.com/workers/static-assets/):
+ * pages as <path>.html, which Workers serve at the same URL without a trailing slash (/about from
+ * about.html, and /about.html or /about/ redirect there), `_headers` and `_redirects`, and
+ * `wrangler.jsonc`, so `npx wrangler deploy` in the output publishes it. Forms with a `static`
+ * sender get a Worker (`worker.js`, from resources/static/cloudflare-worker.js) that checks them and
+ * emails them through the send_email binding, locked to their recipients; it runs only for
+ * /forms/<name>, every page stays a plain file. `.assetsignore` keeps those files private.
  *
  * Headers: one rule for every URL (`/*`) with what most pages get. The Content Security Policy there
  * is the strictest site-wide one that still lets every page work: what pages add to img-src,
@@ -18,9 +22,9 @@ use TinyTank\Static\HostAdapter;
  * is safe, since it can't run code in the page; script-src, connect-src and the rest stay as most
  * pages have them. A page that needs more than that (a csp_allow() for a script) gets a rule of its
  * own, which first detaches the site-wide policy (`! Content-Security-Policy`: rules that match the
- * same URL are merged otherwise). Pages has room for 100 rules; past that, the build fails.
+ * same URL are merged otherwise). There's room for 100 rules; past that, the build fails.
  */
-final class CloudflarePages implements HostAdapter
+final class Cloudflare implements HostAdapter
 {
     public const MAX_HEADER_RULES = 100;
     public const MAX_REDIRECTS = 2000;
@@ -42,12 +46,51 @@ final class CloudflarePages implements HostAdapter
         return str_contains(basename($path), '.') ? $path : $path . '.html';
     }
 
+    /** The date of the Workers runtime behaviour this output was tested with. */
+    public const COMPATIBILITY_DATE = '2026-10-01';
+
+    public const WORKER = __DIR__ . '/../../../resources/static/cloudflare-worker.js';
+
     public function files(Build $build): array
     {
-        return array_filter([
+        $files = array_filter([
             '_headers' => $this->headers($build),
             '_redirects' => $this->redirects($build),
         ], static fn (string $contents) => $contents !== '');
+        // Never served: the build's own files, and wrangler's local folder (`wrangler dev` writes it here).
+        $private = ['.assetsignore', '.tinytank-static', '.wrangler', 'wrangler.jsonc'];
+
+        $config = [
+            'name' => self::workerName($build),
+            'compatibility_date' => self::COMPATIBILITY_DATE,
+            'assets' => ['directory' => '.', 'binding' => 'ASSETS', 'html_handling' => 'auto-trailing-slash', 'not_found_handling' => '404-page'],
+        ];
+        if ($build->forms !== []) {
+            $config['main'] = 'worker.js';
+            $recipients = array_values(array_unique(array_merge(...array_map(static fn (array $form) => $form['to'], array_values($build->forms)))));
+            $config['send_email'] = [['name' => 'FORMS_EMAIL', 'allowed_destination_addresses' => $recipients]];
+            $forms = [];
+            foreach ($build->forms as $name => $form) {
+                $forms[$name] = ['site' => $build->siteName] + array_diff_key($form, ['site' => 1]);
+            }
+            $worker = (string) file_get_contents(self::WORKER);
+            $files['worker.js'] = str_replace('const FORMS = {}; // filled in by the build', 'const FORMS = ' . json_encode($forms, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) . ';', $worker);
+            $private[] = 'worker.js';
+        }
+        $files['wrangler.jsonc'] = "// Written by bin/console build:static: publish with `npx wrangler deploy` in this folder.\n"
+            . json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n";
+        $files['.assetsignore'] = implode("\n", $private) . "\n";
+
+        return $files;
+    }
+
+    /** The Worker's name: `static.name` in config/app.php, or the site's name in lowercase letters and dashes. */
+    private static function workerName(Build $build): string
+    {
+        $name = is_string($build->options['name'] ?? null) ? $build->options['name'] : $build->siteName;
+        $name = trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower($name)), '-');
+
+        return $name !== '' ? substr($name, 0, 63) : 'site';
     }
 
     private function headers(Build $build): string
@@ -86,18 +129,18 @@ final class CloudflarePages implements HostAdapter
         }
         if (count($rules) > self::MAX_HEADER_RULES) {
             throw new \RuntimeException(sprintf(
-                'Cloudflare Pages takes %d header rules, this site needs %d: %d pages need headers of their own (%s…). Give them the same policy, e.g. with csp.sources in config/app.php.',
+                'Cloudflare takes %d header rules, this site needs %d: %d pages need headers of their own (%s…). Give them the same policy, e.g. with csp.sources in config/app.php.',
                 self::MAX_HEADER_RULES, count($rules), count($rules) - 2, implode(', ', array_slice(array_keys($rules), 2, 3)),
             ));
         }
 
-        $out = "# Written by bin/console build:static: the headers the PHP site sends, for Cloudflare Pages.\n";
+        $out = "# Written by bin/console build:static: the headers the PHP site sends, for Cloudflare.\n";
         foreach ($rules as $path => $headers) {
             $out .= "\n{$path}\n";
             foreach ($headers as $name => $value) {
                 $line = str_starts_with($name, '! ') ? "  {$name}" : "  {$name}: {$value}";
                 if (strlen($line) > self::MAX_HEADER_LINE) {
-                    throw new \RuntimeException("The {$name} header for {$path} is longer than the " . self::MAX_HEADER_LINE . ' characters Cloudflare Pages allows on a line.');
+                    throw new \RuntimeException("The {$name} header for {$path} is longer than the " . self::MAX_HEADER_LINE . ' characters Cloudflare allows on a line.');
                 }
                 $out .= $line . "\n";
             }
@@ -112,14 +155,14 @@ final class CloudflarePages implements HostAdapter
             return '';
         }
         if (count($build->redirects) > self::MAX_REDIRECTS) {
-            throw new \RuntimeException(sprintf('Cloudflare Pages takes %d redirects, this site has %d.', self::MAX_REDIRECTS, count($build->redirects)));
+            throw new \RuntimeException(sprintf('Cloudflare takes %d redirects, this site has %d.', self::MAX_REDIRECTS, count($build->redirects)));
         }
-        $out = "# Written by bin/console build:static: the PHP site's redirects, for Cloudflare Pages.\n";
+        $out = "# Written by bin/console build:static: the PHP site's redirects, for Cloudflare.\n";
         foreach ($build->redirects as $from => $redirect) {
             $status = in_array($redirect['status'], [301, 302, 303, 307, 308], true) ? $redirect['status'] : 302;
             $line = "{$from} {$redirect['to']} {$status}";
             if (strlen($line) > self::MAX_REDIRECT_LINE || preg_match('/\s/', $from . $redirect['to'])) {
-                throw new \RuntimeException("The redirect from {$from} can't be written for Cloudflare Pages (too long, or spaces in the URL).");
+                throw new \RuntimeException("The redirect from {$from} can't be written for Cloudflare (too long, or spaces in the URL).");
             }
             $out .= $line . "\n";
         }

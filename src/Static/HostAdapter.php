@@ -10,7 +10,7 @@ namespace TinyTank\Static;
  * carry what the PHP site sends with each response: its headers (the Content Security Policy…) and
  * its redirects.
  *
- * Built in: `cloudflare` (Host\CloudflarePages) and `none` (Host\NoHost). Your own: a class with a
+ * Built in: `cloudflare` (Host\Cloudflare: Workers with static assets) and `none` (Host\NoHost). Your own: a class with a
  * constructor without arguments, named in config/app.php (`'static' => ['host' => MyHost::class]`).
  */
 interface HostAdapter

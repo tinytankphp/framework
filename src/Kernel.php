@@ -329,7 +329,14 @@ final class Kernel
             $this->site->name(),
             $this->logger,
         );
-        $this->twig->addFunction(new TwigFunction('form_spam', $this->forms->spamMarkup(...), ['is_safe' => ['html']]));
+        // In a static build, only what works without this server: see Forms::staticMarkup().
+        $this->twig->addFunction(new TwigFunction('form_spam', fn (string $form): string => $this->site->isStatic() && $this->forms->get($form)->static !== null
+            ? $this->forms->staticMarkup($form, $this->request()->getPathInfo())
+            : $this->forms->spamMarkup($form), ['is_safe' => ['html']]));
+        // A form's action: its page on this site, or in a static build the host's /forms/<name>.
+        $this->twig->addFunction(new TwigFunction('form_action', fn (string $form, string $url): string => $this->site->isStatic() && $this->forms->get($form)->static !== null
+            ? Forms::STATIC_URL . '/' . $form
+            : $url));
 
         // Endpoint used by datastar.get() / post() / put() / patch() / delete().
         $this->route(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], '/datastar', $this->renderDatastarTemplate(...), 'datastar');
