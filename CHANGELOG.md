@@ -20,6 +20,10 @@ change behaviour, and its notes say what to update in your site.
 - **A parent page sets its children's template**: `children: {template: pages/review.twig}` in its
   front matter, for its direct child pages that don't name one.
 
+- **`except()` and `neighbours()` in queries**: `posts().except(post)` for every post but this one
+  (an item, a slug, a page's path, or a list); `query.neighbours(item, wrap: true)` for its previous
+  and next items in the query's order, for "previous / next" links.
+
 ### Changed
 
 - **Error messages suggest the fix**: a typo in a query field, a collection field or a page's front

@@ -86,7 +86,7 @@ final class Pages
      */
     public function query(): Query
     {
-        return new Query('pages', $this->items(...), self::QUERY_FIELDS, self::SEARCH_FIELDS, $this->site);
+        return new Query('pages', $this->items(...), self::QUERY_FIELDS, self::SEARCH_FIELDS, $this->site, identity: 'path');
     }
 
     /** @return array<string, Page> path => page in a language */

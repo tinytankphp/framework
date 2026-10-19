@@ -107,6 +107,31 @@ final class QueryTest extends FrameworkTestCase
         self::assertSame(['2026-09-02' => 1, '2026-10-01' => 1, '2026-08-15' => 1], $query->countBy('data.picked'), 'a missing value isn\'t counted');
     }
 
+    public function testExcept(): void
+    {
+        $query = $this->query();
+        $banana = $query->slug('b')->one() ?? [];
+
+        self::assertSame('a,c,d', self::slugs($query->except($banana)->all()), 'an item');
+        self::assertSame('b,d', self::slugs($query->except(['a', 'c'])->all()), 'slugs');
+        self::assertSame('a,d', self::slugs($query->except([$banana, 'c'])->all()), 'a mix');
+        self::assertSame('a', self::slugs($query->tag('fruit')->except('b')->all()), 'with other filters');
+    }
+
+    public function testNeighbours(): void
+    {
+        $byTitle = $this->query()->orderBy('title'); // a, b, d, c
+
+        $middle = $byTitle->neighbours('b');
+        self::assertSame(['a', 'd'], [$middle['prev']['slug'] ?? null, $middle['next']['slug'] ?? null]);
+        self::assertSame([null, 'b'], [$byTitle->neighbours('a')['prev'], $byTitle->neighbours('a')['next']['slug'] ?? null], 'none before the first');
+        $wrapped = $byTitle->neighbours($byTitle->slug('a')->one() ?? [], wrap: true);
+        self::assertSame(['c', 'b'], [$wrapped['prev']['slug'] ?? null, $wrapped['next']['slug'] ?? null], 'wrapping: the first one\'s previous is the last');
+        self::assertSame(['prev' => null, 'next' => null], $byTitle->neighbours('zzz'));
+        self::assertSame(['prev' => null, 'next' => null], $byTitle->tag('vegetable')->neighbours('c', wrap: true), 'alone: no neighbours, even wrapping');
+        self::assertSame('c', $byTitle->limit(1)->neighbours('d')['next']['slug'] ?? null, 'limit does not cut the neighbours');
+    }
+
     public function testLimitOffsetAndOne(): void
     {
         $query = $this->query();

@@ -40,6 +40,8 @@ final class Query implements \IteratorAggregate, \Countable
      * @param \Closure(string): array<string, TItem> $source items by slug in a language, in their default order
      * @param list<string>                                          $fields       keys where(), orderBy() and countBy() accept
      * @param list<string>                                          $searchFields keys search() looks in
+     * @param string                                                $identity     the field that tells items apart: 'slug',
+     *                                                                            or 'path' for pages (folders can share a name)
      */
     public function __construct(
         private readonly string $label,
@@ -48,6 +50,7 @@ final class Query implements \IteratorAggregate, \Countable
         private readonly array $searchFields,
         private readonly Site $site,
         private readonly int $perPage = 20,
+        private readonly string $identity = 'slug',
     ) {
     }
 
@@ -98,6 +101,23 @@ final class Query implements \IteratorAggregate, \Countable
     public function slug(string|array $slug): self
     {
         return $this->where('slug', $slug);
+    }
+
+    /**
+     * Every item but these: `posts().except(post)` for "more posts", without the one being read. An
+     * item, its slug (a page's path), or a list of either.
+     *
+     * @param array<string, mixed>|string|list<array<string, mixed>|string> $items
+     *
+     * @return self<TItem>
+     */
+    public function except(array|string $items): self
+    {
+        $list = is_string($items) || !array_is_list($items) ? [$items] : $items;
+        $field = $this->identity;
+        $ids = array_map(static fn (array|string $item) => is_array($item) ? (string) ($item[$field] ?? '') : $item, $list);
+
+        return $this->filter(static fn (array $item): bool => !in_array((string) $item[$field], $ids, true));
     }
 
     /**
@@ -247,6 +267,31 @@ final class Query implements \IteratorAggregate, \Countable
         arsort($counts);
 
         return $counts;
+    }
+
+    /**
+     * The items before and after one, in this query's order (filters and orderBy apply; limit and
+     * offset don't): `{prev, next}`, each null at an end, or, with $wrap, the other end, so the last
+     * item's next is the first. Both null when the item isn't among the matches.
+     *
+     * @param array<string, mixed>|string $item an item or its slug (a page's path)
+     *
+     * @return array{prev: TItem|null, next: TItem|null}
+     */
+    public function neighbours(array|string $item, bool $wrap = false): array
+    {
+        $id = is_array($item) ? (string) ($item[$this->identity] ?? '') : $item;
+        $items = $this->matching();
+        $index = array_search($id, array_map(fn (array $i) => (string) $i[$this->identity], $items), true);
+        if ($index === false) {
+            return ['prev' => null, 'next' => null];
+        }
+        $count = count($items);
+        if ($wrap) {
+            return $count < 2 ? ['prev' => null, 'next' => null] : ['prev' => $items[($index - 1 + $count) % $count], 'next' => $items[($index + 1) % $count]];
+        }
+
+        return ['prev' => $items[$index - 1] ?? null, 'next' => $items[$index + 1] ?? null];
     }
 
     /** @return \ArrayIterator<int, TItem> */
