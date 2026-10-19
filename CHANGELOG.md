@@ -49,6 +49,8 @@ change behaviour, and its notes say what to update in your site.
   `motion-safe:`. For an existing site, copy the `prefers-reduced-motion` block and
   `tests/e2e/accessibility.spec.js`.
 - The related-posts component uses `except()`; the route for collection item files.
+- **`site()` in `tests/AppTestCase.php`**: the site with its real `content/`, instead of repeating
+  `overrides: ['content_dir' => self::ROOT . '/content']`. For an existing site, copy `AppTestCase.php`.
 
 ## [0.1.5] - 2026-10-19
 
