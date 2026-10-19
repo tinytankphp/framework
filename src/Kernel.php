@@ -264,7 +264,7 @@ final class Kernel
 
             return isset(Embeds::PROVIDERS[$name]) ? $embeds->check($name, $args) : null;
         };
-        $this->collections = new Collections($collections, $contentDir, $this->cacheDir . '/collections.php', $debug, $this->site, $componentCheck);
+        $this->collections = new Collections($collections, $contentDir, $this->cacheDir . '/collections.php', $debug, $this->site, $componentCheck, $this->images, $mediaUrl);
         $this->pages = new Pages($contentDir . '/pages', $this->cacheDir . '/pages.php', $debug, $this->site, $componentCheck, $mediaUrl, $this->images);
         $this->blog = new Blog($contentDir . '/blog', $this->cacheDir . '/blog.php', $debug, $this->site, $postsPerPage, $componentCheck, $mediaUrl, $this->images);
         $this->vite = new Vite($root, $this->cacheDir, $debug);
@@ -448,7 +448,7 @@ final class Kernel
         return $this->images->picture($this->imageFile($url), $url, $alt, $loading, $sizes, $options, $preset);
     }
 
-    /** The file behind a post's or page's image URL (with or without MEDIA_URL), or null. */
+    /** The file behind a post's, page's or collection item's image URL (with or without MEDIA_URL), or null. */
     private function imageFile(string $url): ?string
     {
         $path = $this->mediaUrl !== '' && str_starts_with($url, $this->mediaUrl) ? substr($url, strlen($this->mediaUrl)) : $url;
@@ -457,6 +457,9 @@ final class Kernel
         }
         if (str_starts_with($path, Pages::ASSET_URL . '/')) {
             return $this->pages->asset(rawurldecode(substr($path, strlen(Pages::ASSET_URL) + 1)));
+        }
+        if (str_starts_with($path, Collections::ASSET_URL . '/')) {
+            return $this->collections->asset(rawurldecode(substr($path, strlen(Collections::ASSET_URL) + 1)));
         }
 
         return null;

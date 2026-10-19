@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace TinyTank\Console;
 
 use TinyTank\Blog\Blog;
+use TinyTank\Collections\Collections;
 use TinyTank\Content\Embeds;
 use TinyTank\Pages\Pages;
 use TinyTank\Cache;
@@ -199,9 +200,10 @@ final class DeployCommand extends Command
             $io->writeln(sprintf(' ✔ %d content pages compiled (%d language versions)', $pages, $versions));
             $io->writeln(sprintf(' ✔ %d page files published to public%s/', $app->pages->publishAssets($this->root . '/public'), Pages::ASSET_URL));
         }];
-        $steps['collections'] = ['description' => 'Compile the data collections', 'run' => static function () use ($io, $app) {
+        $steps['collections'] = ['description' => 'Compile the data collections and publish their item folders\' files to public' . Collections::ASSET_URL . '/', 'run' => function () use ($io, $app) {
             $counts = $app->collections->warmup();
             $io->writeln(sprintf(' ✔ %d data collection%s compiled (%d items)', count($counts), count($counts) === 1 ? '' : 's', array_sum($counts)));
+            $io->writeln(sprintf(' ✔ %d item files published to public%s/', $app->collections->publishAssets($this->root . '/public'), Collections::ASSET_URL));
         }];
         $steps['embeds'] = ['description' => 'Download the posters of embedded videos to public' . Embeds::URL . '/', 'run' => static function () use ($io, $app) {
             [$videos, $fetched, $failed] = self::fetchEmbeds($app);

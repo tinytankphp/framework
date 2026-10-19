@@ -196,8 +196,8 @@ final class MarkdownParser
     }
 
     /**
-     * Front matter and HTML of Markdown outside a post folder (data collections). Relative links to
-     * files are refused there: collections have no folder of their own to publish.
+     * Front matter and HTML of Markdown outside a folder of its own (a collection item that is a single
+     * file, a Markdown field). Relative links to files are refused there: there's nothing to publish.
      *
      * @return array{mixed, string, list<ComponentCall>} front matter (null without one), HTML, components
      */
@@ -263,7 +263,7 @@ final class MarkdownParser
                 continue;
             }
             if ($dir === null) {
-                throw new \RuntimeException("{$source}: \"{$url}\" is a relative link; use a /path (a file in public/) or a full URL.");
+                throw new \RuntimeException("{$source}: \"{$url}\" is a relative link; use a /path (a file in public/) or a full URL. A collection item can be a folder (<slug>/index.md) with its files next to it.");
             }
             if (!is_file($dir . '/' . $path)) {
                 throw new \RuntimeException("{$source}: \"{$url}\" not found in its folder.");
@@ -310,11 +310,20 @@ final class MarkdownParser
     /** A share image from front matter: a file in the folder (→ its asset URL), a /path or an https URL. */
     public static function image(mixed $value, string $dir, string $assetUrl, string $source): ?string
     {
+        return self::folderFile($value, $dir, $assetUrl, $source, 'image');
+    }
+
+    /**
+     * A file named in front matter: a file in the content's folder (→ its asset URL), a /path or an
+     * https URL. $what names it in errors ('image', 'field "brochure"').
+     */
+    public static function folderFile(mixed $value, string $dir, string $assetUrl, string $source, string $what): ?string
+    {
         if ($value === null || $value === '') {
             return null;
         }
         if (!is_string($value)) {
-            throw new \RuntimeException("{$source}: \"image\" must be a file name, a /path or an https:// URL.");
+            throw new \RuntimeException("{$source}: {$what} must be a file name, a /path or an https:// URL.");
         }
         if (str_starts_with($value, '/') || preg_match('#^https://\S+$#i', $value)) {
             return $value;
@@ -325,10 +334,10 @@ final class MarkdownParser
             throw new \RuntimeException("{$source}: {$e->getMessage()}");
         }
         if ($path === null || !is_file($dir . '/' . $path)) {
-            throw new \RuntimeException("{$source}: image \"{$value}\" not found in its folder.");
+            throw new \RuntimeException("{$source}: {$what} \"{$value}\" not found in its folder.");
         }
         if (!isset(Blog::ASSET_TYPES[strtolower(pathinfo($path, PATHINFO_EXTENSION))])) {
-            throw new \RuntimeException("{$source}: image \"{$value}\" is not a publishable file type.");
+            throw new \RuntimeException("{$source}: {$what} \"{$value}\" is not a publishable file type.");
         }
 
         return $assetUrl . '/' . $path;

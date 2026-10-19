@@ -6,6 +6,8 @@ use TinyTank\Blog\AssetController;
 use TinyTank\Blog\Blog;
 use TinyTank\Blog\FeedController;
 use TinyTank\Blog\PostSeo;
+use TinyTank\Collections\AssetController as CollectionAssetController;
+use TinyTank\Collections\Collections;
 use TinyTank\Kernel;
 use TinyTank\Pages\AssetController as PageAssetController;
 use TinyTank\Pages\PageSeo;
@@ -56,6 +58,7 @@ return static function (Kernel $app): void {
 
     // Content pages, built like an app's PageController. The catch-all comes last: other routes win.
     $app->get(Pages::ASSET_URL . '/{file}', PageAssetController::class, 'page_asset', ['file' => '.+']);
+    $app->get(Collections::ASSET_URL . '/{file}', CollectionAssetController::class, 'collection_asset', ['file' => '.+']);
     $app->get('/{path}', static function (string $path) use ($app) {
         $page = $app->pages()->where('uri', $path)->one();
         if ($page === null) {

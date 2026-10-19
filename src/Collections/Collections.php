@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace TinyTank\Collections;
 
+use TinyTank\Blog\Blog;
 use TinyTank\Blog\MarkdownParser;
 use TinyTank\Cache;
 use TinyTank\Content\InvalidDate;
 use TinyTank\Content\StrictYaml;
+use TinyTank\Images\Images;
 use TinyTank\Query;
 use TinyTank\Site;
 
@@ -18,8 +20,12 @@ use TinyTank\Site;
  *   content/faq/what-is-tinytank.md       front matter (the fields) + an optional Markdown body (`html`)
  *   content/faq/what-is-tinytank.it.md    Italian version: omitted fields keep the default-language value
  *   content/team/ada.yaml                 data only
+ *   content/projects/pulse-os/index.md    an item as a folder, with its files next to it:
+ *   content/projects/pulse-os/cover.jpg   /media/collections/projects/pulse-os/cover.jpg
  *
- * The file name is the item's slug. Query them with `collection('faq')` in Twig or
+ * The file (or folder) name is the item's slug. In a folder, relative links and images in the body
+ * point at its files (images get responsive versions, as in posts), and a `url` field may name one
+ * (`image: cover.jpg`), so `image(item.image)` is responsive too. Query them with `collection('faq')` in Twig or
  * `$app->collection('faq')` in PHP (see TinyTank\Query), in the current language.
  *
  * Without APP_DEBUG every collection is compiled once into var/cache/collections.php (Markdown
@@ -29,6 +35,9 @@ final class Collections
 {
     /** content/ folders that belong to TinyTank, not to collections. */
     public const RESERVED = ['blog', 'pages'];
+
+    /** Public URL prefix of item folders' files; `deploy` copies them to public/media/collections/<collection>/<slug>/. */
+    public const ASSET_URL = '/media/collections';
 
     private const SLUG = '[a-z0-9]+(?:-[a-z0-9]+)*';
 
@@ -47,6 +56,10 @@ final class Collections
         private readonly Site $site,
         /** @var (\Closure(string, array<string, string|int|float|bool>): ?string)|null checks a component (see MarkdownParser) */
         private readonly ?\Closure $componentCheck = null,
+        /** Responsive versions of images in item folders, and originals without metadata */
+        private readonly ?Images $images = null,
+        /** Base URL of the files' public URLs: '' (this site) or a CDN, MEDIA_URL */
+        private readonly string $mediaUrl = '',
     ) {
         $schemas = [];
         foreach ($config as $name => $definition) {
@@ -98,6 +111,61 @@ final class Collections
         );
     }
 
+    /**
+     * Absolute path of an item folder's file ("projects/pulse-os/cover.jpg"), or null if there's no
+     * such item or file.
+     */
+    public function asset(string $file): ?string
+    {
+        $parts = explode('/', $file, 3);
+        if (count($parts) !== 3 || !isset($this->schemas[$parts[0]])) {
+            return null;
+        }
+        [$name, $slug, $path] = $parts;
+        foreach ($this->compiled() as $collections) {
+            $item = $collections[$name][$slug] ?? null;
+            if ($item !== null) {
+                return in_array($path, $item['assets'], true) ? "{$this->contentDir}/{$name}/{$slug}/{$path}" : null;
+            }
+        }
+
+        return null;
+    }
+
+    /** Copies item folders' files to public/media/collections/<collection>/<slug>/. Returns the number of files. */
+    public function publishAssets(string $publicDir): int
+    {
+        $target = $publicDir . self::ASSET_URL;
+        Cache::clear($target);
+        $count = 0;
+        $done = [];
+        foreach ($this->compiled() as $collections) {
+            foreach ($collections as $name => $items) {
+                foreach ($items as $slug => $item) {
+                    if (isset($done["{$name}/{$slug}"])) {
+                        continue;
+                    }
+                    $done["{$name}/{$slug}"] = true;
+                    $dir = "{$target}/{$name}/{$slug}";
+                    foreach ($item['assets'] as $file) {
+                        if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
+                            throw new \RuntimeException("Cannot create {$dir}.");
+                        }
+                        $source = "{$this->contentDir}/{$name}/{$slug}/{$file}";
+                        if ($this->images !== null && Images::isRaster($file)) {
+                            $count += $this->images->publish($source, $dir); // without metadata, plus its smaller versions
+                        } else {
+                            copy($source, "{$dir}/{$file}");
+                            ++$count;
+                        }
+                    }
+                }
+            }
+        }
+
+        return $count;
+    }
+
     /** @return list<string> collections with a JSON export */
     public function exported(): array
     {
@@ -129,7 +197,7 @@ final class Collections
     private function compile(): array
     {
         $this->checkContentFolders();
-        $markdown = new MarkdownParser($this->componentCheck);
+        $markdown = new MarkdownParser($this->componentCheck, $this->images);
         $default = $this->site->defaultLanguage;
         $compiled = array_fill_keys(array_keys($this->site->languages), []);
 
@@ -141,13 +209,22 @@ final class Collections
                     throw new \RuntimeException("{$name}/{$other}: a translation needs the default-language file {$name}/{$slug}." . pathinfo($other, PATHINFO_EXTENSION) . ' first.');
                 }
                 $original = null;
+                $inFolder = array_filter($files, static fn (string $file) => str_contains($file, '/'));
+                if ($inFolder !== [] && count($inFolder) !== count($files)) {
+                    throw new \RuntimeException("{$name}/{$slug}: keep every language version of an item in one place, all in its folder or all as files.");
+                }
+                // An item folder: its files, and where they're served from.
+                $folder = str_contains($files[$default], '/')
+                    ? ["{$this->contentDir}/{$name}/{$slug}", $this->mediaUrl . self::ASSET_URL . "/{$name}/{$slug}"]
+                    : null;
+                $assets = $folder !== null ? $this->assets($folder[0], "{$name}/{$slug}") : [];
                 foreach ($files as $language => $file) {
                     $source = "{$name}/{$file}";
-                    [$data, $html, $components] = $this->read("{$this->contentDir}/{$source}", $source, $markdown);
+                    [$data, $html, $components] = $this->read("{$this->contentDir}/{$source}", $source, $markdown, $folder[1] ?? null);
                     $inherit = $html === '' && $original !== null; // a translation without a body keeps the default one
                     $item = ['slug' => $slug, 'language' => $language]
-                        + $schema->item($data, $source, $markdown, $original)
-                        + ['html' => $inherit ? $original['html'] : $html, 'components' => $inherit ? $original['components'] : $components, 'source' => $source];
+                        + $schema->item($data, $source, $markdown, $original, $folder)
+                        + ['html' => $inherit ? $original['html'] : $html, 'components' => $inherit ? $original['components'] : $components, 'source' => $source, 'assets' => $assets];
                     $versions[$slug][$language] = $item;
                     $original ??= $item;
                 }
@@ -179,11 +256,16 @@ final class Collections
             return [];
         }
         $files = [];
-        foreach (self::entries($dir) as $filename) {
-            if (!preg_match('/^(' . self::SLUG . ')(?:\.([a-z]{2}(?:-[a-z]{2})?))?\.(md|ya?ml)$/', $filename, $m) || !is_file("{$dir}/{$filename}")) {
+        foreach (self::entries($dir) as $entry) {
+            if (is_dir("{$dir}/{$entry}")) {
+                $this->folderFiles($name, $entry, $files);
+                continue;
+            }
+            $filename = $entry;
+            if (!preg_match('/^(' . self::SLUG . ')(?:\.([a-z]{2}(?:-[a-z]{2})?))?\.(md|ya?ml)$/', $filename, $m)) {
                 throw new \RuntimeException(
                     "{$name}/{$filename}: collections hold <slug>.md or <slug>.yaml files (translations: <slug>.<language>.md), "
-                    . 'with a slug of lowercase letters, digits and dashes; images and other files go in public/.',
+                    . 'with a slug of lowercase letters, digits and dashes; an item with files of its own is a folder, <slug>/index.md and its files.',
                 );
             }
             [, $slug, $code] = $m;
@@ -210,8 +292,68 @@ final class Collections
         return $files;
     }
 
-    /** @return array{array<mixed>, string, list<array<string, mixed>>} fields, HTML of the Markdown body ('' for YAML files), its components */
-    private function read(string $path, string $source, MarkdownParser $markdown): array
+    /**
+     * An item folder's index files, added to $files (slug => language => "slug/index.md"). It holds
+     * index.md or index.yaml (translations: index.<language>.md) and its files, no subfolders.
+     *
+     * @param array<string, array<string, string>> $files
+     */
+    private function folderFiles(string $name, string $slug, array &$files): void
+    {
+        $dir = "{$this->contentDir}/{$name}/{$slug}";
+        if (!preg_match('/^' . self::SLUG . '$/', $slug)) {
+            throw new \RuntimeException("{$name}/{$slug}/: an item folder's name is its slug: lowercase letters, digits and dashes.");
+        }
+        foreach (self::entries($dir) as $entry) {
+            if (is_dir("{$dir}/{$entry}")) {
+                throw new \RuntimeException("{$name}/{$slug}/{$entry}/: an item folder holds its index file and files, no subfolders.");
+            }
+            if (!preg_match('/^index(?:\.([a-z]{2}(?:-[a-z]{2})?))?\.(md|ya?ml)$/', $entry, $m)) {
+                continue; // the item's files (see assets())
+            }
+            $code = $m[1];
+            if ($code === $this->site->defaultLanguage) {
+                throw new \RuntimeException("{$name}/{$slug}/{$entry}: the default language ({$code}) has no language code: index.{$m[2]}.");
+            }
+            $language = $code === '' ? $this->site->defaultLanguage : $code;
+            if (!isset($this->site->languages[$language])) {
+                throw new \RuntimeException("{$name}/{$slug}/{$entry}: language \"{$code}\" is not configured in config/app.php.");
+            }
+            if (isset($files[$slug][$language])) {
+                throw new \RuntimeException("{$name}/{$slug}/{$entry}: \"{$slug}\" already has a file for this language ({$files[$slug][$language]}).");
+            }
+            $files[$slug][$language] = "{$slug}/{$entry}";
+        }
+        if (!isset($files[$slug])) {
+            throw new \RuntimeException("{$name}/{$slug}/: an item folder needs an index.md (or index.yaml), with its files next to it.");
+        }
+    }
+
+    /** @return list<string> publishable files in an item folder */
+    private function assets(string $dir, string $label): array
+    {
+        $assets = [];
+        foreach (self::entries($dir) as $name) {
+            if (preg_match('/^index(\.[a-z-]+)?\.(md|ya?ml)$/', $name) || !isset(Blog::ASSET_TYPES[strtolower(pathinfo($name, PATHINFO_EXTENSION))])) {
+                continue;
+            }
+            if (!preg_match('/^[A-Za-z0-9_-][A-Za-z0-9._-]*$/', $name)) {
+                throw new \RuntimeException("{$label}/{$name}: file names may only use letters, digits, dots, dashes and underscores.");
+            }
+            $assets[] = $name;
+        }
+        sort($assets);
+
+        return $assets;
+    }
+
+    /**
+     * @param string|null $assetUrl an item folder's public URL: relative links and images in the body
+     *                              point at its files; null for a single-file item
+     *
+     * @return array{array<mixed>, string, list<array<string, mixed>>} fields, HTML of the Markdown body ('' for YAML files), its components
+     */
+    private function read(string $path, string $source, MarkdownParser $markdown, ?string $assetUrl = null): array
     {
         $contents = file_get_contents($path);
         if ($contents === false) {
@@ -219,7 +361,7 @@ final class Collections
         }
         try {
             if (str_ends_with($path, '.md')) {
-                [$data, $html, $components] = $markdown->convert($contents, $source);
+                [$data, $html, $components] = $assetUrl !== null ? $markdown->convertFile($path, $assetUrl, $source) : $markdown->convert($contents, $source);
                 $data ??= [];
             } else {
                 [$data, $html, $components] = [StrictYaml::read($contents), '', []];

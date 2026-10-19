@@ -7,6 +7,16 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+### Added
+
+- **Collection items with their own files**: an item can be a folder, `content/<collection>/<slug>/`
+  with `index.md` (or `index.yaml`, translations `index.<language>.md`) and its images and files next
+  to it, like a post. A `url` field can name one of them (`image: cover.jpg`), relative links and
+  images in the body point at them, and images get responsive AVIF/WebP versions, in the body and
+  through `image()`. `deploy` publishes them to `public/media/collections/`. **In an existing site**,
+  add the development route to `config/routes.php` (see the skeleton's, or Data collections in the
+  docs): `$app->get(Collections::ASSET_URL . '/{file}', CollectionAssetController::class, 'collection_asset', ['file' => '.+']);`
+
 ### Changed
 
 - **Error messages suggest the fix**: a typo in a query field, a collection field or a page's front

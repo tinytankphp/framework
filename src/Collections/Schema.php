@@ -102,12 +102,14 @@ final class Schema
      * Checks and normalises an item's data. A translation ($original set) may omit any field: it
      * keeps the default-language value.
      *
-     * @param array<mixed>              $data
-     * @param array<string, mixed>|null $original the default-language item, for a translation
+     * @param array<mixed>                $data
+     * @param array<string, mixed>|null   $original the default-language item, for a translation
+     * @param array{string, string}|null  $folder   an item folder and its files' public URL: a `url`
+     *                                              field may then name a file in it (cover.jpg)
      *
      * @return array<string, mixed> field => value, every field present
      */
-    public function item(array $data, string $source, MarkdownParser $markdown, ?array $original = null): array
+    public function item(array $data, string $source, MarkdownParser $markdown, ?array $original = null, ?array $folder = null): array
     {
         $unknown = array_diff(array_keys($data), array_keys($this->fields));
         if ($unknown !== []) {
@@ -133,7 +135,7 @@ final class Schema
                 $item[$field] = null;
                 continue;
             }
-            $item[$field] = $this->value($type, $value, $field, $source, $markdown);
+            $item[$field] = $this->value($type, $value, $field, $source, $markdown, $folder);
         }
 
         return $item;
@@ -149,9 +151,13 @@ final class Schema
         return $converted[1];
     }
 
-    private function value(string $type, mixed $value, string $field, string $source, MarkdownParser $markdown): mixed
+    /** @param array{string, string}|null $folder */
+    private function value(string $type, mixed $value, string $field, string $source, MarkdownParser $markdown, ?array $folder): mixed
     {
         $invalid = static fn (string $expected) => new \RuntimeException("{$source}: field \"{$field}\" must be {$expected}.");
+        if ($type === 'url' && $folder !== null && is_string($value) && !preg_match('#^(/|[a-z][a-z0-9+.-]*:)#i', $value)) {
+            return MarkdownParser::folderFile($value, $folder[0], $folder[1], $source, "field \"{$field}\"");
+        }
 
         return match ($type) {
             'string' => is_string($value) && trim($value) !== '' ? trim($value) : throw $invalid('a non-empty string'),
@@ -159,7 +165,7 @@ final class Schema
             'float' => is_int($value) || is_float($value) ? (float) $value : throw $invalid('a number'),
             'bool' => is_bool($value) ? $value : throw $invalid('true or false'),
             'date' => MarkdownParser::date($value, $source, $field),
-            'url' => is_string($value) && preg_match('#^(/(?!/)\S*|https://\S+)$#i', $value) ? $value : throw $invalid('a /path or an https:// URL'),
+            'url' => is_string($value) && preg_match('#^(/(?!/)\S*|https://\S+)$#i', $value) ? $value : throw $invalid($folder !== null ? 'a file in its folder, a /path or an https:// URL' : 'a /path or an https:// URL'),
             'markdown' => is_string($value) ? self::markdown($markdown->convert($value, "{$source} ({$field})"), $field, $source) : throw $invalid('Markdown text'),
             'list' => is_array($value) && array_is_list($value) && array_filter($value, static fn ($v) => !is_scalar($v)) === []
                 ? $value : throw $invalid('a list of plain values, e.g. [a, b]'),

@@ -51,7 +51,7 @@ final class CollectionsTest extends FrameworkTestCase
         self::assertSame(['what', 'install', 'later'], array_column($faq->all(), 'slug'));
         self::assertSame(3, count($faq));
         $install = $faq->slug('install')->one();
-        self::assertSame(['slug' => 'install', 'language' => 'en', 'question' => 'How do I install it?', 'order' => 2, 'tags' => ['setup'], 'html' => '<p>Run <strong>composer</strong>.</p>', 'components' => [], 'source' => 'faq/install.md'], $install);
+        self::assertSame(['slug' => 'install', 'language' => 'en', 'question' => 'How do I install it?', 'order' => 2, 'tags' => ['setup'], 'html' => '<p>Run <strong>composer</strong>.</p>', 'components' => [], 'source' => 'faq/install.md', 'assets' => []], $install);
         self::assertNull($faq->slug('what')->one()['tags'] ?? null, 'optional fields are null when missing');
         self::assertSame('', $faq->slug('later')->one()['html'] ?? null);
 
@@ -186,12 +186,56 @@ final class CollectionsTest extends FrameworkTestCase
         yield 'invalid yaml' => [['team/a.yaml' => "name: [unclosed\n"], 'team/a.yaml: invalid YAML'];
         yield 'stray file' => [['faq/photo.png' => 'x'], 'faq/photo.png: collections hold <slug>.md or <slug>.yaml files'];
         yield 'bad slug' => [['faq/Bad_Name.md' => $faq], 'faq/Bad_Name.md: collections hold <slug>.md'];
-        yield 'subfolder' => [['faq/sub/a.md' => $faq], 'faq/sub: collections hold <slug>.md'];
+        yield 'folder without index' => [['faq/sub/a.md' => $faq], 'faq/sub/: an item folder needs an index.md (or index.yaml), with its files next to it.'];
+        yield 'subfolder in an item' => [['faq/a/index.md' => $faq, 'faq/a/img/x.png' => 'x'], 'faq/a/img/: an item folder holds its index file and files, no subfolders.'];
+        yield 'file and folder' => [['faq/a.md' => $faq, 'faq/a/index.it.md' => $faq], 'faq/a: keep every language version of an item in one place'];
+        yield 'relative image in a file item' => [['faq/a.md' => $faq . "![x](x.png)\n"], 'faq/a.md: "x.png" is a relative link; use a /path (a file in public/) or a full URL. A collection item can be a folder (<slug>/index.md) with its files next to it.'];
+        yield 'missing folder file' => [['team/cleo/index.yaml' => "name: Cleo\njoined: 2024-01-01\nactive: true\nphoto: nope.png\n"], 'team/cleo/index.yaml: field "photo" "nope.png" not found in its folder.'];
         yield 'translation only' => [['faq/a.it.md' => $faq], 'faq/a.it.md: a translation needs the default-language file faq/a.md first.'];
         yield 'default language code' => [['faq/a.en.md' => $faq], 'faq/a.en.md: the default language (en) has no language code: a.md.'];
         yield 'unknown language' => [['faq/a.fr.md' => $faq, 'faq/a.md' => $faq], 'faq/a.fr.md: language "fr" is not configured'];
         yield 'md and yaml' => [['faq/a.md' => $faq, 'faq/a.yaml' => "question: Q\norder: 1\n"], 'already has a file for this language'];
         yield 'stray folder' => [['faqs/a.md' => $faq], 'content/faqs/ is not a collection: define it in config/collections.php (collections: faq, team).'];
+    }
+
+    public function testAnItemCanBeAFolderWithItsFiles(): void
+    {
+        $png = (string) file_get_contents(self::CONTENT . '/blog/2026/09/alpha/cover.png');
+        $app = $this->app(self::FILES + [
+            'team/cleo/index.yaml' => "name: Cleo\njoined: 2025-06-01\nphoto: portrait.png\nactive: true\n",
+            'team/cleo/portrait.png' => $png,
+            'team/cleo/cv.pdf' => '%PDF-1.4',
+            'faq/folder/index.md' => "---\nquestion: With a diagram?\norder: 4\n---\n![The diagram](diagram.png)\n\n[The PDF](notes.pdf)\n",
+            'faq/folder/index.it.md' => "---\nquestion: Con un diagramma?\n---\n",
+            'faq/folder/diagram.png' => $png,
+            'faq/folder/notes.pdf' => '%PDF-1.4',
+        ]);
+
+        // A url field naming a file in the folder: its public URL, which image() makes responsive.
+        $cleo = $app->collection('team')->slug('cleo')->one() ?? [];
+        self::assertSame('/media/collections/team/cleo/portrait.png', $cleo['photo'] ?? null);
+        self::assertSame(['cv.pdf', 'portrait.png'], $cleo['assets'] ?? null);
+        self::assertStringContainsString('srcset="/media/collections/team/cleo/portrait.png.', $app->image($cleo['photo'], 'Cleo'));
+
+        // Relative images and links in the body point at the folder's files; images are responsive.
+        $faq = $app->collection('faq')->slug('folder')->one() ?? [];
+        self::assertStringContainsString('<picture><source type="image/', (string) $faq['html']);
+        self::assertStringContainsString('/media/collections/faq/folder/diagram.png', (string) $faq['html']);
+        self::assertStringContainsString('<a href="/media/collections/faq/folder/notes.pdf">', (string) $faq['html']);
+        self::assertSame('Con un diagramma?', $app->collection('faq')->language('it')->slug('folder')->one()['question'] ?? null, 'translations sit in the folder');
+
+        // Served in development, as deploy publishes them; only the item's own files.
+        self::assertFileExists((string) $app->collections->asset('team/cleo/portrait.png'));
+        self::assertNull($app->collections->asset('team/cleo/index.yaml'), 'not the index file');
+        self::assertNull($app->collections->asset('team/ada/portrait.png'), 'not another item\'s');
+        $response = $this->request($app, '/media/collections/team/cleo/portrait.png');
+        self::assertSame([200, 'image/png'], [$response->getStatusCode(), $response->headers->get('Content-Type')]);
+        self::assertSame(404, $this->request($app, '/media/collections/team/cleo/nope.png')->getStatusCode());
+
+        $public = $this->tempDir('public');
+        self::assertGreaterThanOrEqual(4, $app->collections->publishAssets($public));
+        self::assertFileExists("{$public}/media/collections/team/cleo/portrait.png");
+        self::assertFileExists("{$public}/media/collections/faq/folder/notes.pdf");
     }
 
     /** @param array<string, string> $content */

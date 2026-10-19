@@ -6,6 +6,7 @@ namespace TinyTank\Console;
 
 use TinyTank\Blog\Blog;
 use TinyTank\Cache;
+use TinyTank\Collections\Collections;
 use TinyTank\Pages\Pages;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -32,7 +33,8 @@ final class CacheClearCommand extends Command
         // Published copies would shadow the post folders: nginx serves public/ before PHP is reached.
         Cache::clear($this->root . '/public' . Blog::ASSET_URL);
         Cache::clear($this->root . '/public' . Pages::ASSET_URL);
-        $output->writeln('<info>var/cache, public' . Blog::ASSET_URL . ' and public' . Pages::ASSET_URL . ' cleared.</info>');
+        Cache::clear($this->root . '/public' . Collections::ASSET_URL);
+        $output->writeln('<info>var/cache, public' . Blog::ASSET_URL . ', public' . Pages::ASSET_URL . ' and public' . Collections::ASSET_URL . ' cleared.</info>');
 
         // deploy's authoritative class map only knows the classes that existed then: in development a
         // new controller or command would be "not found". Back to the normal autoloader.
