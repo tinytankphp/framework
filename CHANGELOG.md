@@ -7,6 +7,13 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+### Changed
+
+- **Error messages suggest the fix**: a typo in a query field, a collection field or a page's front
+  matter gets "Did you mean "summary"?"; `'?metrics' => 'array'` says the `?` goes on the type
+  (`'metrics' => '?array'`); a camelCase field name gets its snake_case form; a missing collection
+  field says how to make it optional.
+
 ### Fixed
 
 - **`content()` stays HTML in a variable**: `{% set body = content(post) %}{{ body }}` printed the

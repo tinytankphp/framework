@@ -175,6 +175,12 @@ final class QueryTest extends FrameworkTestCase
                 self::assertStringStartsWith('fruits:', $e->getMessage());
             }
         }
+        try {
+            $query->orderBy('titel desc');
+            self::fail('A typo must throw.');
+        } catch (\InvalidArgumentException $e) {
+            self::assertSame('fruits: no field "titel". Did you mean "title"? Fields: slug, language, title, rank, tags, note, data.', $e->getMessage());
+        }
         $this->expectExceptionMessage('fruits: no field "colour". Fields: slug, language, title, rank, tags, note, data.');
         $query->where('colour', 'red');
     }

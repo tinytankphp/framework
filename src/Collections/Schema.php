@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace TinyTank\Collections;
 
 use TinyTank\Blog\MarkdownParser;
+use TinyTank\Suggest;
 
 /**
  * One collection's definition from config/collections.php, and the validation of its items.
@@ -57,8 +58,14 @@ final class Schema
         foreach ($config['fields'] as $field => $type) {
             $required = !str_starts_with((string) $type, '?');
             $type = ltrim((string) $type, '?');
+            if (is_string($field) && str_starts_with($field, '?')) {
+                $bare = substr($field, 1);
+                throw new \InvalidArgumentException("{$where}: field \"{$field}\": an optional field puts the ? on its type, '{$bare}' => '?{$type}'.");
+            }
             if (!is_string($field) || !preg_match('/^[a-z][a-z0-9_]*$/', $field)) {
-                throw new \InvalidArgumentException("{$where}: field names use lowercase letters, digits and underscores.");
+                $suggestion = strtolower(trim((string) preg_replace('/[^A-Za-z0-9]+/', '_', (string) preg_replace('/([a-z0-9])([A-Z])/', '$1_$2', (string) $field)), '_'));
+                throw new \InvalidArgumentException("{$where}: field \"{$field}\": names use lowercase letters, digits and underscores"
+                    . (preg_match('/^[a-z][a-z0-9_]*$/', $suggestion) ? ", e.g. \"{$suggestion}\"." : '.'));
             }
             if (in_array($field, self::RESERVED, true)) {
                 throw new \InvalidArgumentException("{$where}: \"{$field}\" is set by TinyTank and can't be a field (" . implode(', ', self::RESERVED) . ').');
@@ -105,7 +112,7 @@ final class Schema
         $unknown = array_diff(array_keys($data), array_keys($this->fields));
         if ($unknown !== []) {
             $hint = array_intersect($unknown, self::RESERVED) !== [] ? ' (slug and language come from the file name)' : '';
-            throw new \RuntimeException("{$source}: unknown field \"" . implode('", "', $unknown) . "\"{$hint}. Fields of {$this->name}: " . implode(', ', array_keys($this->fields)) . '.');
+            throw new \RuntimeException("{$source}: unknown field \"" . implode('", "', $unknown) . "\"{$hint}." . Suggest::didYouMean($unknown, array_keys($this->fields)) . " Fields of {$this->name}: " . implode(', ', array_keys($this->fields)) . '.');
         }
 
         $item = [];
@@ -116,7 +123,7 @@ final class Schema
                     continue;
                 }
                 if ($required) {
-                    throw new \RuntimeException("{$source}: missing field \"{$field}\" ({$type}).");
+                    throw new \RuntimeException("{$source}: missing field \"{$field}\" ({$type}). To make it optional: '{$field}' => '?{$type}' in config/collections.php.");
                 }
                 $item[$field] = null;
                 continue;

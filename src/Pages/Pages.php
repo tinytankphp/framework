@@ -10,6 +10,7 @@ use TinyTank\Cache;
 use TinyTank\Images\Images;
 use TinyTank\Query;
 use TinyTank\Site;
+use TinyTank\Suggest;
 
 /**
  * Content pages: one-offs like About, Privacy or Contact (Craft's "singles"), nested like a structure.
@@ -286,7 +287,7 @@ final class Pages
         }
         $unknown = array_diff(array_keys($meta), self::FRONT_MATTER);
         if ($unknown !== []) {
-            throw new \RuntimeException("{$source}: unknown front matter \"" . implode('", "', $unknown) . '" (' . implode(', ', self::FRONT_MATTER) . '; put anything else under "data").');
+            throw new \RuntimeException("{$source}: unknown front matter \"" . implode('", "', $unknown) . '".' . Suggest::didYouMean($unknown, self::FRONT_MATTER) . ' Allowed: ' . implode(', ', self::FRONT_MATTER) . '; put anything else under "data".');
         }
         $title = $meta['title'] ?? null;
         if (!is_string($title) || trim($title) === '') {

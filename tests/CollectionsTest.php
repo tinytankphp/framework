@@ -171,7 +171,8 @@ final class CollectionsTest extends FrameworkTestCase
         $faq = "---\nquestion: Q\norder: 1\n---\n";
         yield 'unknown field' => [['faq/a.md' => "---\nquestion: Q\norder: 1\ncolour: red\n---\n"], 'faq/a.md: unknown field "colour". Fields of faq: question, order, tags.'];
         yield 'slug as field' => [['faq/a.md' => "---\nquestion: Q\norder: 1\nslug: b\n---\n"], 'unknown field "slug" (slug and language come from the file name)'];
-        yield 'missing field' => [['faq/a.md' => "---\nquestion: Q\n---\n"], 'faq/a.md: missing field "order" (int).'];
+        yield 'typo of a field' => [['faq/a.md' => "---\nquestion: Q\norder: 1\ntag: [a]\n---\n"], 'faq/a.md: unknown field "tag". Did you mean "tags"? Fields of faq: question, order, tags.'];
+        yield 'missing field' => [['faq/a.md' => "---\nquestion: Q\n---\n"], 'faq/a.md: missing field "order" (int). To make it optional: \'order\' => \'?int\' in config/collections.php.'];
         yield 'empty string' => [['faq/a.md' => "---\nquestion: ''\norder: 1\n---\n"], 'field "question" must be a non-empty string'];
         yield 'int' => [['faq/a.md' => "---\nquestion: Q\norder: '1'\n---\n"], 'field "order" must be a whole number'];
         yield 'list' => [['faq/a.md' => "---\nquestion: Q\norder: 1\ntags: {a: b}\n---\n"], 'field "tags" must be a list of plain values'];
@@ -208,6 +209,8 @@ final class CollectionsTest extends FrameworkTestCase
     {
         yield 'no fields' => [['faq' => []], 'config/collections.php "faq": needs "fields"'];
         yield 'unknown type' => [['faq' => ['fields' => ['q' => 'text']]], 'field "q" has unknown type "text"'];
+        yield '? on the name' => [['faq' => ['fields' => ['?q' => 'array']]], 'field "?q": an optional field puts the ? on its type, \'q\' => \'?array\'.'];
+        yield 'camelCase name' => [['faq' => ['fields' => ['featuredOrder' => 'int']]], 'field "featuredOrder": names use lowercase letters, digits and underscores, e.g. "featured_order".'];
         yield 'reserved field' => [['faq' => ['fields' => ['html' => 'string']]], '"html" is set by TinyTank and can\'t be a field'];
         yield 'bad name' => [['FAQ-list' => ['fields' => ['q' => 'string']]], 'collection names use lowercase letters, digits and underscores'];
         yield 'reserved name' => [['blog' => ['fields' => ['q' => 'string']]], '"blog" is reserved'];

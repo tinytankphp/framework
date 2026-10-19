@@ -326,7 +326,7 @@ final class Query implements \IteratorAggregate, \Countable
         // A path inside a field (a page's `data`, a collection's array field): its keys are the site's
         // own, so only the field itself is checked.
         if (!in_array(explode('.', $field, 2)[0], $this->fields, true)) {
-            throw new \InvalidArgumentException("{$this->label}: no field \"{$field}\". Fields: " . implode(', ', $this->fields) . '.');
+            throw new \InvalidArgumentException("{$this->label}: no field \"{$field}\"." . Suggest::didYouMean([explode('.', $field, 2)[0]], $this->fields) . ' Fields: ' . implode(', ', $this->fields) . '.');
         }
     }
 }
