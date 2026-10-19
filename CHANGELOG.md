@@ -7,6 +7,13 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-10-19
+
+What the lab909.dev retrospective asked for. One change to check in an existing site: collections
+now refuse fields named `assets` or `reading_minutes` (TinyTank sets them). For collection items
+with their own files, add the development route to `config/routes.php` (see Added). The skeleton's
+changes are listed below, each with what to copy.
+
 ### Added
 
 - **Collection items with their own files**: an item can be a folder, `content/<collection>/<slug>/`
@@ -224,7 +231,8 @@ The first tagged release. TinyTank is in beta: the API may still change between 
   want the same: `config/app.php` (`log` and `cdn` sections), `src/Controller/PageController.php`
   (`cdn: false` support), `config/routes.php` (blog page numbers up to 6 digits), `.env.example`.
 
-[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.6...HEAD
+[0.1.6]: https://github.com/tinytankphp/framework/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/tinytankphp/framework/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/tinytankphp/framework/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/tinytankphp/framework/compare/v0.1.2...v0.1.3
