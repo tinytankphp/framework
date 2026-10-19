@@ -109,6 +109,19 @@ final class ComponentsTest extends FrameworkTestCase
         self::assertSame('<p>x</p>', $app->content(['html' => '<p>x</p>']));
     }
 
+    public function testContentStaysHtmlWhenStoredInAVariable(): void
+    {
+        $app = $this->kernel();
+        $twig = $app->twig->createTemplate(
+            "{% set post = posts().slug('alpha').one() %}{% set body = content(post) %}{{ body }}|{{ body|striptags|length > 0 ? 'text' }}|{{ content(post) }}",
+        );
+        [$stored, $text, $printed] = explode('|', $twig->render());
+
+        self::assertSame($printed, $stored, 'not escaped: {% set body = content(post) %} then {{ body }}');
+        self::assertStringStartsWith('<', $stored);
+        self::assertSame('text', $text, 'filters still work on it');
+    }
+
     /** @return iterable<string, array{string, string}> */
     public static function invalidComponents(): iterable
     {

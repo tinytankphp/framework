@@ -33,6 +33,7 @@ use Symfony\Component\Security\Csrf\SameOriginCsrfTokenManager;
 use Twig\Environment;
 use Twig\Extra\Intl\IntlExtension;
 use Twig\Loader\FilesystemLoader;
+use Twig\Markup;
 use Twig\TwigFunction;
 
 /**
@@ -305,7 +306,9 @@ final class Kernel
         $this->twig->addFunction(new TwigFunction('posts', $this->posts(...)));
         $this->twig->addFunction(new TwigFunction('collection', $this->collection(...)));
         $this->twig->addFunction(new TwigFunction('pages', $this->pages(...)));
-        $this->twig->addFunction(new TwigFunction('content', $this->content(...), ['is_safe' => ['html']]));
+        // As Markup, not a string: `{% set body = content(post) %}{{ body }}` prints the HTML (a string
+        // stored in a variable is escaped when printed; is_safe only covers a direct {{ content(…) }}).
+        $this->twig->addFunction(new TwigFunction('content', fn (array $item, ?string $link = null): Markup => new Markup($this->content($item, $link), 'UTF-8')));
         // For components: a video's poster, title and player URL (and its frame-src on this page only),
         // and any other source a component needs on the page it's on.
         $this->twig->addFunction(new TwigFunction('video', $this->video(...)));

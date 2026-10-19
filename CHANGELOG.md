@@ -7,6 +7,12 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`content()` stays HTML in a variable**: `{% set body = content(post) %}{{ body }}` printed the
+  HTML escaped, as text, because only a direct `{{ content(…) }}` was marked safe. It now returns
+  Twig's `Markup`. Found twice building lab909.dev.
+
 ## [0.1.5] - 2026-10-19
 
 What building lab909.dev needed. Nothing to change in an existing site; rebuild its assets
