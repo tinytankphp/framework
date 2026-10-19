@@ -41,6 +41,15 @@ change behaviour, and its notes say what to update in your site.
   HTML escaped, as text, because only a direct `{{ content(…) }}` was marked safe. It now returns
   Twig's `Markup`. Found twice building lab909.dev.
 
+### Skeleton
+
+- **Gentler reduced motion** (`resources/css/app.css`): visitors who ask for less motion still get
+  colour and opacity fades; only movement and animations stop. An effect the visitor switched on
+  knowingly can keep moving with the class `motion-allowed`. Put hover movement behind
+  `motion-safe:`. For an existing site, copy the `prefers-reduced-motion` block and
+  `tests/e2e/accessibility.spec.js`.
+- The related-posts component uses `except()`; the route for collection item files.
+
 ## [0.1.5] - 2026-10-19
 
 What building lab909.dev needed. Nothing to change in an existing site; rebuild its assets
