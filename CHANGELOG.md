@@ -17,6 +17,9 @@ change behaviour, and its notes say what to update in your site.
   add the development route to `config/routes.php` (see the skeleton's, or Data collections in the
   docs): `$app->get(Collections::ASSET_URL . '/{file}', CollectionAssetController::class, 'collection_asset', ['file' => '.+']);`
 
+- **A parent page sets its children's template**: `children: {template: pages/review.twig}` in its
+  front matter, for its direct child pages that don't name one.
+
 ### Changed
 
 - **Error messages suggest the fix**: a typo in a query field, a collection field or a page's front

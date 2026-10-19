@@ -134,6 +134,24 @@ final class PagesTest extends FrameworkTestCase
         self::assertStringContainsString('<p class="message">Not found.</p>', $this->body($response));
     }
 
+    public function testAParentSetsItsChildrensTemplate(): void
+    {
+        $app = $this->withPages([
+            'tools/index.md' => "---\ntitle: Tools\nchildren: {template: tools/review.twig}\n---\n",
+            'tools/a/index.md' => "---\ntitle: A\n---\n",
+            'tools/a/index.it.md' => "---\ntitle: A it\n---\n",
+            'tools/b/index.md' => "---\ntitle: B\ntemplate: tools/special.twig\n---\n",
+            'tools/a/deeper/index.md' => "---\ntitle: Deeper\n---\n",
+        ]);
+        $template = fn (string $path, string $language = 'en') => $app->pages()->language($language)->where('path', $path)->one()['template'] ?? null;
+
+        self::assertSame('tools/review.twig', $template('tools/a'), 'from the parent');
+        self::assertSame('tools/review.twig', $template('tools/a', 'it'), 'in every language');
+        self::assertSame('tools/special.twig', $template('tools/b'), 'a page\'s own template wins');
+        self::assertNull($template('tools'), 'not the parent itself');
+        self::assertNull($template('tools/a/deeper'), 'children only, not grandchildren');
+    }
+
     public function testPagesAreQueriedByTheirData(): void
     {
         // A section of dated pages, three of them picked for the home page.
@@ -248,7 +266,8 @@ final class PagesTest extends FrameworkTestCase
         yield 'invalid yaml' => [['x/index.md' => "---\ntitle: X\nsummary: Note: this breaks\n---\n"], 'pages/x/index.md: invalid YAML front matter:'];
         yield 'no front matter' => [['x/index.md' => 'Just text'], 'pages/x/index.md: missing YAML front matter'];
         yield 'missing title' => [['x/index.md' => "---\nsummary: S\n---\n"], 'pages/x/index.md: front matter needs a "title"'];
-        yield 'unknown key' => [['x/index.md' => "---\ntitle: X\ncolour: red\n---\n"], 'unknown front matter "colour". Allowed: title, summary, image, template, form, order, updated, cdn, unlisted, data, slug; put anything else under "data".'];
+        yield 'unknown key' => [['x/index.md' => "---\ntitle: X\ncolour: red\n---\n"], 'unknown front matter "colour". Allowed: title, summary, image, template, children, form, order, updated, cdn, unlisted, data, slug; put anything else under "data".'];
+        yield 'children without a template' => [['x/index.md' => "---\ntitle: X\nchildren: {layout: a.twig}\n---\n"], '"children" is a mapping with a "template" for the child pages'];
         yield 'typo of a key' => [['x/index.md' => "---\ntitle: X\nsumary: Y\n---\n"], 'unknown front matter "sumary". Did you mean "summary"? Allowed:'];
         yield 'bad template' => [['x/index.md' => "---\ntitle: X\ntemplate: ../secret.twig\n---\n"], '"template" must be a template path such as pages/contact.twig'];
         yield 'order' => [['x/index.md' => "---\ntitle: X\norder: first\n---\n"], '"order" must be a whole number'];

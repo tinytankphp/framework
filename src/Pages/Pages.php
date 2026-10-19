@@ -27,6 +27,7 @@ use TinyTank\Suggest;
  *   summary: Who we are         (optional: meta description; defaults to the first paragraph)
  *   image: team.jpg             (optional share image: a file in the folder, a /path or an https URL)
  *   template: pages/about.twig  (optional: rendered with its own template instead of page.twig)
+ *   children: {template: pages/review.twig}  (optional: the template of its child pages that don't set one)
  *   order: 2                    (optional: for menus, `pages().orderBy('order, title')`)
  *   updated: 2026-10-01         (optional: last significant change, for the sitemap)
  *   data: {form_title: Write us} (optional: anything else the template needs, translatable)
@@ -44,7 +45,7 @@ use TinyTank\Suggest;
  * Query pages with `pages()` (see TinyTank\Query); a page without a version in a language doesn't
  * exist there. Compiled into var/cache/pages.php without APP_DEBUG, like the blog.
  *
- * @phpstan-type Page array{slug: string, path: string, uri: string, parent: string, depth: int, language: string, title: string, summary: string, image: ?string, template: ?string, form: ?string, order: ?int, updated: ?string, cdn: bool, unlisted: bool, data: array<mixed>, html: string, components: list<ComponentCall>, source: string, assets: list<string>}
+ * @phpstan-type Page array{slug: string, path: string, uri: string, parent: string, depth: int, language: string, title: string, summary: string, image: ?string, template: ?string, children: array{template?: string}, form: ?string, order: ?int, updated: ?string, cdn: bool, unlisted: bool, data: array<mixed>, html: string, components: list<ComponentCall>, source: string, assets: list<string>}
  *
  * @phpstan-import-type ComponentCall from MarkdownParser
  */
@@ -59,7 +60,7 @@ final class Pages
     public const QUERY_FIELDS = ['slug', 'path', 'uri', 'parent', 'depth', 'language', 'title', 'summary', 'image', 'template', 'form', 'order', 'updated', 'unlisted', 'data'];
     public const SEARCH_FIELDS = ['title', 'summary'];
 
-    private const FRONT_MATTER = ['title', 'summary', 'image', 'template', 'form', 'order', 'updated', 'cdn', 'unlisted', 'data', 'slug'];
+    private const FRONT_MATTER = ['title', 'summary', 'image', 'template', 'children', 'form', 'order', 'updated', 'cdn', 'unlisted', 'data', 'slug'];
 
     /** @var array<string, array<string, Page>>|null language => path => page */
     private ?array $pages = null;
@@ -196,6 +197,15 @@ final class Pages
                 $original ??= $language === $this->site->defaultLanguage ? $page : null;
             }
         }
+        // A parent's `children: {template: …}`, for its child pages that don't name a template.
+        $default = $pages[$this->site->defaultLanguage];
+        foreach ($pages as &$versions) {
+            foreach ($versions as $path => &$page) {
+                $page['template'] ??= $default[$page['parent']]['children']['template'] ?? null;
+            }
+            unset($page);
+        }
+        unset($versions);
         foreach ($pages as $language => &$versions) {
             ksort($versions, SORT_STRING);
             // Parents come first (sorted by path), so their uri is known when a child's is built.
@@ -297,6 +307,11 @@ final class Pages
         if ($template !== null && (!is_string($template) || !preg_match('#^[a-z0-9_-]+(?:/[a-z0-9_-]+)*\.twig$#', $template))) {
             throw new \RuntimeException("{$source}: \"template\" must be a template path such as pages/contact.twig.");
         }
+        $children = array_key_exists('children', $meta) ? $meta['children'] : $original['children'] ?? [];
+        if (!is_array($children) || array_diff(array_keys($children), ['template']) !== []
+            || (isset($children['template']) && (!is_string($children['template']) || !preg_match('#^[a-z0-9_-]+(?:/[a-z0-9_-]+)*\.twig$#', $children['template'])))) {
+            throw new \RuntimeException("{$source}: \"children\" is a mapping with a \"template\" for the child pages, e.g. children: {template: pages/review.twig}.");
+        }
         $form = array_key_exists('form', $meta) ? $meta['form'] : $original['form'] ?? null;
         if ($form !== null && (!is_string($form) || !preg_match('/^[a-z][a-z0-9_-]*$/', $form))) {
             throw new \RuntimeException("{$source}: \"form\" must be the name of a form in config/forms.php.");
@@ -342,6 +357,7 @@ final class Pages
                 ? MarkdownParser::image($meta['image'], $dir, $this->mediaUrl . self::ASSET_URL . '/' . $path, $source)
                 : $original['image'] ?? null,
             'template' => $template,
+            'children' => $children,
             'form' => $form,
             'order' => $order,
             'updated' => isset($meta['updated']) ? MarkdownParser::date($meta['updated'], $source, 'updated') : $original['updated'] ?? null,
