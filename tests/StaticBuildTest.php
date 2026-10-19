@@ -33,12 +33,14 @@ final class StaticBuildTest extends FrameworkTestCase
 
         $build = (new Builder($app, $out, ['/legal/privacy']))->run();
 
-        foreach (['index.html', 'sitemap.xml', 'robots.txt', 'blog/feed.xml', '404.html', 'legal/privacy/index.html', 'blog/alpha/index.html', 'it/blog/alpha/index.html', 'favicon.svg', 'build/app.js', 'media/blog/alpha/cover.png'] as $file) {
+        // Cloudflare Pages by default: <path>.html, served there at the same URL.
+        foreach (['index.html', 'sitemap.xml', 'robots.txt', 'blog/feed.xml', '404.html', 'legal/privacy.html', 'blog/alpha.html', 'it/blog/alpha.html', 'favicon.svg', 'build/app.js', 'media/blog/alpha/cover.png', '_headers'] as $file) {
             self::assertFileExists("{$out}/{$file}", $file);
         }
         self::assertFileDoesNotExist("{$out}/index.php", 'no PHP in a static site');
         self::assertStringContainsString('https://static.test/blog/alpha', (string) file_get_contents("{$out}/sitemap.xml"), 'absolute URLs use the base URL');
-        self::assertSame(['file' => 'blog/alpha/index.html', 'type' => 'text/html; charset=utf-8'], array_intersect_key($build->pages['/blog/alpha'] ?? [], ['file' => 1, 'type' => 1]));
+        self::assertSame(['file' => 'blog/alpha.html', 'type' => 'text/html; charset=utf-8'], array_intersect_key($build->pages['/blog/alpha'] ?? [], ['file' => 1, 'type' => 1]));
+        self::assertStringContainsString("/*\n  Content-Security-Policy: default-src 'self'", (string) file_get_contents("{$out}/_headers"));
         self::assertStringContainsString("default-src 'self'", $build->pages['/blog/alpha']['headers']['Content-Security-Policy'] ?? '', 'the headers each page would get, for the host');
         self::assertStringContainsString('404', (string) file_get_contents("{$out}/404.html"));
         self::assertSame([], $build->errors);
@@ -88,6 +90,7 @@ final class StaticBuildTest extends FrameworkTestCase
         $tester->execute(['--base-url' => 'https://static.test', '--allow-dynamic' => true]);
         self::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         self::assertFileExists("{$root}/deploy/index.html");
+        self::assertFileExists("{$root}/deploy/_headers", 'Cloudflare Pages by default');
         self::assertFileExists("{$root}/deploy/" . StaticBuildCommand::MARKER);
         self::assertStringContainsString('These need the server', $tester->getDisplay());
 
@@ -110,5 +113,15 @@ final class StaticBuildTest extends FrameworkTestCase
 
         $tester->execute(['--base-url' => 'not a url']);
         self::assertSame(Command::INVALID, $tester->getStatusCode());
+
+        $tester = new CommandTester(Console::application($root)->find('build:static'));
+        $tester->execute(['--base-url' => 'https://static.test', '--host' => 'netlifyy']);
+        self::assertSame(Command::INVALID, $tester->getStatusCode());
+        self::assertStringContainsString('Unknown static host "netlifyy": use cloudflare, none, or a class implementing', str_replace("\n", ' ', (string) preg_replace('/\s+/', ' ', $tester->getDisplay())));
+
+        $tester = new CommandTester(Console::application($root)->find('build:static'));
+        $tester->execute(['--base-url' => 'https://static.test', '--host' => 'none', '--allow-dynamic' => true]);
+        self::assertSame(Command::SUCCESS, $tester->getStatusCode());
+        self::assertFileDoesNotExist("{$root}/deploy/_headers", 'no host files for "none"');
     }
 }

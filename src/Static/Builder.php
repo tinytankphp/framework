@@ -12,9 +12,10 @@ use TinyTank\Kernel;
  *
  * Every URL is found by following links: from the home page, the sitemap, the feed and robots.txt
  * (plus `static.paths` in config/app.php for pages nothing links to), each page is rendered through
- * the kernel, in production mode, and written as <path>/index.html (files with an extension, like
- * /sitemap.xml, as they are). Redirects are recorded, not written; host adapters turn them into the
- * host's rules. Then public/ is copied (the asset build, the favicon…) and the media of posts, pages
+ * the kernel, in production mode, and written where the host serves it at the same URL (the host
+ * adapter decides: <path>.html for Cloudflare Pages; files with an extension, like /sitemap.xml, as
+ * they are). Redirects and each page's headers are recorded; the adapter turns them into the host's
+ * own files (`_headers`, `_redirects`). Then public/ is copied (the asset build, the favicon…) and the media of posts, pages
  * and collections published next to the pages.
  *
  * What only a server can do is reported by page, in Build::$dynamic: Datastar actions that call the
@@ -28,12 +29,16 @@ final class Builder
     /** @var array<string, string> URL path => the page it was found on */
     private array $foundOn = [];
 
+    private readonly HostAdapter $host;
+
     /** @param list<string> $paths extra URL paths to render (`static.paths`) */
     public function __construct(
         private readonly Kernel $app,
         private readonly string $out,
         private readonly array $paths = [],
+        ?HostAdapter $host = null,
     ) {
+        $this->host = $host ?? new Host\CloudflarePages();
     }
 
     public function run(): Build
@@ -73,6 +78,11 @@ final class Builder
         $missing = $this->app->handle(Request::create($this->app->site->baseUrl . '/__tinytank-static-404'));
         $this->write('404.html', (string) $missing->getContent());
 
+        // The host's own files: its headers and redirects (they may throw: past the host's limits).
+        foreach ($this->host->files($build) as $file => $contents) {
+            $this->write($file, $contents);
+        }
+
         return $build;
     }
 
@@ -100,7 +110,7 @@ final class Builder
 
         $body = (string) $response->getContent();
         $type = (string) $response->headers->get('Content-Type', 'text/html');
-        $file = self::file($path);
+        $file = $this->host->file($path);
         $this->write($file, $body);
         $headers = [];
         foreach (['Content-Security-Policy', 'Content-Security-Policy-Report-Only', 'X-Content-Type-Options', 'Referrer-Policy', 'Permissions-Policy', 'X-Frame-Options'] as $name) {
@@ -186,17 +196,6 @@ final class Builder
         $path = (string) preg_replace('/[?#].*$/', '', $url);
 
         return $path === '' ? '/' : $path;
-    }
-
-    /** "/" → index.html, "/blog" → blog/index.html, "/sitemap.xml" → sitemap.xml */
-    private static function file(string $path): string
-    {
-        $path = trim(rawurldecode($path), '/');
-        if ($path === '') {
-            return 'index.html';
-        }
-
-        return str_contains(basename($path), '.') ? $path : $path . '/index.html';
     }
 
     private function write(string $file, string $contents): void

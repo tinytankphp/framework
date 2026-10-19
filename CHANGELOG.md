@@ -14,7 +14,12 @@ change behaviour, and its notes say what to update in your site.
   page, the sitemap, the feed and robots.txt, written as `<path>/index.html`, with `public/`, the
   published media and `404.html`. It reports by page what needs the server (Datastar server actions,
   forms) and stops on broken links. `site.static` tells templates. Config: `static.out`,
-  `static.base_url`, `static.paths`. Host files and static search and forms come next.
+  `static.base_url`, `static.paths`, `static.host`.
+- **Hosts for static builds**, behind `TinyTank\Static\HostAdapter` (where each page goes, and the
+  host's own files): `cloudflare` (the default: `<path>.html`, which Pages serves at the PHP site's
+  URLs; `_headers` with one site-wide Content Security Policy, pages that add a script source
+  getting their own rule; `_redirects`; checked against Cloudflare's limits) and `none`
+  (redirects as HTML pages). Checked with Cloudflare's local server (`wrangler pages dev`).
 
 ## [0.1.6] - 2026-10-19
 
