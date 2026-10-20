@@ -22,6 +22,9 @@ change behaviour, and its notes say what to update in your site.
   (`<path>.html`, served at the PHP site's URLs; `_headers` with one site-wide Content Security
   Policy, pages that add a script source getting their own rule; `_redirects`; `wrangler.jsonc` for
   `npx wrangler deploy`; checked against Cloudflare's limits), and `none` (redirects as HTML pages).
+- **`bin/console preview:static`** serves the static build locally, as its host will: Cloudflare's
+  local server (`wrangler dev`: headers, redirects, the forms' Worker with emails written to files),
+  or PHP's built-in server with `--php` (pages, files, redirects; no Node needed).
 - **A route can stay out of the sitemap**: `sitemap: false` in `$app->get()` / `$app->route()`, for
   a GET page that isn't one on its own (a fragment Datastar loads).
 - **Forms on static sites**: a form with `'static' => ['from' => …]` in `config/forms.php` is
@@ -34,6 +37,9 @@ change behaviour, and its notes say what to update in your site.
 
 ### Skeleton
 
+- **The static preview's port in DDEV**: 8080, at `https://<project>.ddev.site:8080`. For an existing
+  site, add the `static` entry under `web_extra_exposed_ports` in `.ddev/config.yaml` and
+  `ddev restart`.
 - **The blog search works on static sites**: `/blog/search` (route `blog_search`,
   `templates/blog/search.twig`, `noindex`) lists every post with its words and tags; in a static
   build the search box and tags load it on first use and filter in the browser. For an existing
