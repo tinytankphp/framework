@@ -67,6 +67,9 @@ final class Cloudflare implements HostAdapter
         ];
         if ($build->forms !== []) {
             $config['main'] = 'worker.js';
+            // Browsers post a form as a navigation, which the file server would answer (405) before
+            // the Worker: the Worker goes first for the forms' URLs, and only for them.
+            $config['assets']['run_worker_first'] = ['/forms/*'];
             $recipients = array_values(array_unique(array_merge(...array_map(static fn (array $form) => $form['to'], array_values($build->forms)))));
             $config['send_email'] = [['name' => 'FORMS_EMAIL', 'allowed_destination_addresses' => $recipients]];
             $forms = [];

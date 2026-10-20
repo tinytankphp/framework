@@ -70,6 +70,38 @@ final class StaticBuildTest extends FrameworkTestCase
         self::assertSame('static', $template->render());
     }
 
+    public function testAStaticFormPostsToTheHostWhichGetsWhatItNeeds(): void
+    {
+        $root = $this->project();
+        self::write($root, [
+            'config/forms.php' => "<?php return ['contact' => ['fields' => ['email' => ['type' => 'email', 'required' => true], 'message' => ['type' => 'textarea', 'min' => 10]], 'to' => 'me@example.com', 'subject' => 'From {email}', 'spam' => ['honeypot', 'max_links' => 1], 'static' => ['from' => 'form@forms.example.com']]];",
+            'templates/custom-page.twig' => "{% extends '_layout.twig' %}{% block content %}<h1>{{ page.title }}</h1><form method=\"post\" action=\"{{ form_action('contact', '/contact') }}\">{{ form_spam('contact') }}</form>{% endblock %}",
+        ]);
+        $app = $this->kernel(false, ['url' => 'https://static.test', 'cache_dir' => $this->tempDir('cache'), 'forms' => require "{$root}/config/forms.php"], $root);
+        $out = $this->tempDir('out');
+
+        // The PHP site posts to the page itself, with the usual spam checks.
+        $php = self::body($this->request($app, '/contact'));
+        self::assertStringContainsString('action="/contact"', $php);
+        self::assertStringNotContainsString('name="_page"', $php);
+
+        $build = (new Builder($app, $out))->run();
+        $html = (string) file_get_contents("{$out}/contact.html");
+        self::assertStringContainsString('action="/forms/contact"', $html, 'the host answers it');
+        self::assertStringContainsString('name="website"', $html, 'the honeypot works without a server');
+        self::assertStringContainsString('<input type="hidden" name="_page" value="/contact">', $html, 'where to send the visitor back');
+        self::assertStringContainsString('name="_page" value="/it/contact"', (string) file_get_contents("{$out}/it/contact.html"), 'each language its own page');
+        self::assertArrayNotHasKey('/contact', $build->dynamic, 'not a server feature any more');
+        self::assertFileExists("{$out}/contact/sent.html", 'the "sent" state, where the host sends visitors');
+
+        $form = $build->forms['contact'] ?? [];
+        self::assertSame(['/contact' => 'en', '/it/contact' => 'it'], $form['pages'] ?? null);
+        self::assertSame([['me@example.com'], 'form@forms.example.com', 'email', true, 1], [$form['to'], $form['from'], $form['reply_to'], $form['honeypot'], $form['max_links']]);
+        self::assertSame('From {email}', $form['subject']['en'] ?? null, 'placeholders kept for the host');
+        self::assertSame('Use at least {min} characters.', $form['messages']['en']['min'] ?? null);
+        self::assertSame('Campo obbligatorio.', $form['messages']['it']['required'] ?? null, 'in each page\'s language');
+    }
+
     public function testBrokenMediaLinksAreErrors(): void
     {
         $root = $this->project();

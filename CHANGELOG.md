@@ -9,17 +9,32 @@ change behaviour, and its notes say what to update in your site.
 
 ### Added
 
-- **Static builds, first step**: `bin/console build:static` renders the whole site into plain files
-  (`deploy/` by default) for a static host: every page found by following links from the home
-  page, the sitemap, the feed and robots.txt, written as `<path>/index.html`, with `public/`, the
-  published media and `404.html`. It reports by page what needs the server (Datastar server actions,
-  forms) and stops on broken links. `site.static` tells templates. Config: `static.out`,
-  `static.base_url`, `static.paths`, `static.host`.
+- **Static builds**: `bin/console build:static` renders the whole site into plain files (`deploy/` by
+  default) for a static host, while development stays the PHP site. Every page is found by
+  following links from the home page, the sitemap, the feed and robots.txt, and written where the
+  host serves it at the PHP site's URL, with `public/`, the published media and `404.html`. It
+  reports by page what needs the server (Datastar server actions, forms the host doesn't answer)
+  and stops on broken links. `site.static` tells templates. Config: `static.out`, `static.base_url`,
+  `static.paths`, `static.host`, `static.name`. See Deploying → Static builds.
 - **Hosts for static builds**, behind `TinyTank\Static\HostAdapter` (where each page goes, and the
-  host's own files): `cloudflare` (the default: `<path>.html`, which Pages serves at the PHP site's
-  URLs; `_headers` with one site-wide Content Security Policy, pages that add a script source
-  getting their own rule; `_redirects`; checked against Cloudflare's limits) and `none`
-  (redirects as HTML pages). Checked with Cloudflare's local server (`wrangler pages dev`).
+  host's own files): `cloudflare`, the default, for Cloudflare Workers with static assets
+  (`<path>.html`, served at the PHP site's URLs; `_headers` with one site-wide Content Security
+  Policy, pages that add a script source getting their own rule; `_redirects`; `wrangler.jsonc` for
+  `npx wrangler deploy`; checked against Cloudflare's limits), and `none` (redirects as HTML pages).
+- **Forms on static sites**: a form with `'static' => ['from' => …]` in `config/forms.php` is
+  answered by the host. On Cloudflare, the build adds a Worker (only for `/forms/<name>`) that
+  checks it like the PHP site (required fields, lengths, email, choices, honeypot, links limit, the
+  same messages in the page's language) and emails it through Email Routing's `send_email`
+  binding, locked to the form's recipients; the visitor lands on `<page>/sent`. Templates use
+  `form_action('contact', url)`; `form_spam()` prints what works without the server. Everything
+  above was checked with Cloudflare's local server (`wrangler dev`), the form in a real browser.
+
+### Skeleton
+
+- **The contact form works on static sites**: `templates/_forms/contact.twig` posts with
+  `form_action()` and leaves out Datastar's submit in a static build. For an existing site, copy
+  its `<form …>` tag. `deploy/` and `var/static-cache/` in `.gitignore`; a commented `static`
+  example in `config/app.php`.
 
 ## [0.1.6] - 2026-10-19
 

@@ -83,6 +83,7 @@ final class StaticHostsTest extends TestCase
 
         $config = json_decode((string) preg_replace('#^//.*\n#', '', $files['wrangler.jsonc']), true);
         self::assertSame('worker.js', $config['main'] ?? null);
+        self::assertSame(['/forms/*'], $config['assets']['run_worker_first'] ?? null, 'a browser\'s post is a navigation: the Worker answers it, not the file server');
         self::assertSame([['name' => 'FORMS_EMAIL', 'allowed_destination_addresses' => ['me@example.com']]], $config['send_email'] ?? null);
         self::assertStringContainsString('worker.js', $files['.assetsignore'], 'the code is never served');
         self::assertStringContainsString("import { EmailMessage } from 'cloudflare:email';", $files['worker.js'] ?? '');
