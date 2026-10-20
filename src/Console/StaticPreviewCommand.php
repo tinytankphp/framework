@@ -55,9 +55,7 @@ final class StaticPreviewCommand extends Command
         $cloudflare = !$input->getOption('php') && is_file($dir . '/wrangler.jsonc');
         if ($cloudflare) {
             // Cloudflare's local server: _headers, _redirects and the forms' Worker, as on Cloudflare.
-            $wrangler = is_file($this->root . '/node_modules/.bin/wrangler')
-                ? escapeshellarg($this->root . '/node_modules/.bin/wrangler')
-                : 'npx --yes wrangler@4';
+            $wrangler = self::wrangler($this->root);
             $command = 'cd ' . escapeshellarg($dir) . " && {$wrangler} dev --ip " . escapeshellarg($ip) . ' --port ' . escapeshellarg($port);
             $how = 'Cloudflare\'s local server (wrangler dev): headers, redirects and forms as on Cloudflare; emails are written to '
                 . $out . '/.wrangler/tmp/email/ instead of being sent';
@@ -79,5 +77,11 @@ final class StaticPreviewCommand extends Command
         passthru($command, $code);
 
         return $code === 0 ? Command::SUCCESS : Command::FAILURE;
+    }
+
+    /** Cloudflare's command line tool: the site's own if installed (npm i -D wrangler), or fetched by npx. */
+    public static function wrangler(string $root): string
+    {
+        return is_file($root . '/node_modules/.bin/wrangler') ? escapeshellarg($root . '/node_modules/.bin/wrangler') : 'npx --yes wrangler@4';
     }
 }

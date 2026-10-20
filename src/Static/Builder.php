@@ -211,7 +211,7 @@ final class Builder
         }
     }
 
-    /** @return array{pages: array<string, string>, fields: array<string, array{type: string, required: bool, min: ?int, max: int, choices: list<string>}>, to: list<string>, from: string, reply_to: ?string, honeypot: bool, max_links: ?int, subject: array<string, string>, messages: array<string, array<string, string>>} */
+    /** @return array{pages: array<string, string>, fields: array<string, array{type: string, required: bool, min: ?int, max: int, choices: list<string>}>, to: list<string>, from: string, send: string, reply_to: ?string, honeypot: bool, max_links: ?int, subject: array<string, string>, messages: array<string, array<string, string>>} */
     private function formData(string $name): array
     {
         $form = $this->app->forms->get($name);
@@ -225,6 +225,7 @@ final class Builder
             'fields' => $form->fields,
             'to' => $to,
             'from' => (string) ($form->static['from'] ?? ''),
+            'send' => (string) ($form->static['send'] ?? 'cloudflare'),
             'reply_to' => $form->replyTo,
             'honeypot' => $form->honeypot(),
             'max_links' => $form->maxLinks(),

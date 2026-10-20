@@ -41,6 +41,7 @@ final class Console
         $console->addCommand(new SiteCleanCommand($root));
         $console->addCommand(new StaticBuildCommand($root));
         $console->addCommand(new StaticPreviewCommand($root));
+        $console->addCommand(new StaticPublishCommand($root));
         foreach (self::discover($commandDir ?? $root . '/src/Command', $namespace) as $class) {
             $command = new $class();
             if ($command instanceof AppCommand) {

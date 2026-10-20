@@ -102,7 +102,11 @@ final class StaticBuildTest extends FrameworkTestCase
         $forms = require "{$root}/config/forms.php";
         $forms['contact']['static']['to'] = 'inbox@example.com';
         $live = $this->kernel(false, ['url' => 'https://static.test', 'cache_dir' => $this->tempDir('cache2'), 'forms' => $forms], $root);
-        self::assertSame(['inbox@example.com'], (new Builder($live, $this->tempDir('out2')))->run()->forms['contact']['to']);
+        self::assertSame('cloudflare', $form['send'], 'by Cloudflare by default');
+        $forms['contact']['static']['send'] = 'smtp';
+        $live = $this->kernel(false, ['url' => 'https://static.test', 'cache_dir' => $this->tempDir('cache2'), 'forms' => $forms], $root);
+        $form2 = (new Builder($live, $this->tempDir('out2')))->run()->forms['contact'];
+        self::assertSame([['inbox@example.com'], 'smtp'], [$form2['to'], $form2['send']]);
         self::assertSame('From {email}', $form['subject']['en'] ?? null, 'placeholders kept for the host');
         self::assertSame('Use at least {min} characters.', $form['messages']['en']['min'] ?? null);
         self::assertSame('Campo obbligatorio.', $form['messages']['it']['required'] ?? null, 'in each page\'s language');

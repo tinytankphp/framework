@@ -36,6 +36,14 @@ change behaviour, and its notes say what to update in your site.
   binding, locked to the form's recipients; the visitor lands on `<page>/sent`. Templates use
   `form_action('contact', url)`; `form_spam()` prints what works without the server. Everything
   above was checked with Cloudflare's local server (`wrangler dev`), the form in a real browser.
+- **Forms on static sites can send through your own mail server**: `'send' => 'smtp'` in the
+  form's `static` (Cloudflare's email binding needs a paid Workers plan). The Worker speaks SMTP
+  over `cloudflare:sockets` (port 465 TLS, 587 STARTTLS, AUTH PLAIN or LOGIN), with `SMTP_HOST`,
+  `SMTP_PORT`, `SMTP_USER` and `SMTP_PASSWORD` as its secrets.
+- **`bin/console publish:static`** builds the static site and publishes it on Cloudflare
+  (`wrangler deploy`) with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` from `.env`, no browser
+  login; forms sent over SMTP get the `SMTP_*` keys from `.env` as the Worker's secrets, through a
+  temporary file deleted right after. `--no-build`, `--dry-run`.
 
 ### Skeleton
 

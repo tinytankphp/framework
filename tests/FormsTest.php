@@ -243,6 +243,7 @@ final class FormsTest extends FrameworkTestCase
             [['contact' => ['fields' => ['x' => 'text'], 'static' => ['from' => 'nope']]], '"static" is [\'from\' => \'an address of yours\''],
             [['contact' => ['fields' => ['x' => 'text'], 'static' => ['from' => 'a@b.test', 'to' => 'x@y.test, oops']]], '"static" is [\'from\''],
             [['contact' => ['fields' => ['x' => 'text'], 'static' => ['from' => 'a@b.test', 'subject' => 'x']]], '"static" is [\'from\''],
+            [['contact' => ['fields' => ['x' => 'text'], 'static' => ['from' => 'a@b.test', 'send' => 'pigeon']]], "'send' => 'smtp' or 'cloudflare'"],
         ] as [$forms, $message]) {
             try {
                 $this->kernel(overrides: ['forms' => $forms]);

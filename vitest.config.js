@@ -9,6 +9,7 @@ export default defineConfig({
             datastar: fileURLToPath(new URL('./resources/js/datastar.js', import.meta.url)),
             // The static build's Worker imports Cloudflare's runtime module: a stand-in for the tests.
             'cloudflare:email': fileURLToPath(new URL('./tests/js/cloudflare-email.js', import.meta.url)),
+            'cloudflare:sockets': fileURLToPath(new URL('./tests/js/cloudflare-sockets.js', import.meta.url)),
         },
     },
     test: {

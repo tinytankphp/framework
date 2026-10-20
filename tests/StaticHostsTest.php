@@ -88,7 +88,7 @@ final class StaticHostsTest extends TestCase
         $build = new Build('/out', 'https://example.com', 'Lab909');
         $build->forms['contact'] = [
             'pages' => ['/contact' => 'en'], 'fields' => ['email' => ['type' => 'email', 'required' => true, 'min' => null, 'max' => 254, 'choices' => []]],
-            'to' => ['me@example.com'], 'from' => 'contact@forms.example.com', 'reply_to' => 'email', 'honeypot' => true, 'max_links' => 2,
+            'to' => ['me@example.com'], 'from' => 'contact@forms.example.com', 'send' => 'cloudflare', 'reply_to' => 'email', 'honeypot' => true, 'max_links' => 2,
             'subject' => ['en' => 'Message from {email}'], 'messages' => ['en' => ['required' => 'Required.']],
         ];
         $files = (new Cloudflare())->files($build);
@@ -103,6 +103,22 @@ final class StaticHostsTest extends TestCase
         self::assertStringContainsString('"from": "contact@forms.example.com"', $files['worker.js']);
         self::assertStringContainsString('"site": "Lab909"', $files['worker.js']);
         self::assertStringNotContainsString('const FORMS = {};', $files['worker.js'], 'the settings are filled in');
+    }
+
+    public function testFormsSentOverSmtpNeedNoBinding(): void
+    {
+        $build = new Build('/out', 'https://example.com', 'Lab909');
+        $build->forms['contact'] = [
+            'pages' => ['/contact' => 'en'], 'fields' => ['email' => ['type' => 'email', 'required' => true, 'min' => null, 'max' => 254, 'choices' => []]],
+            'to' => ['me@example.com'], 'from' => 'contact@example.com', 'send' => 'smtp', 'reply_to' => 'email', 'honeypot' => true, 'max_links' => 2,
+            'subject' => ['en' => 'Message from {email}'], 'messages' => ['en' => ['required' => 'Required.']],
+        ];
+        $files = (new Cloudflare())->files($build);
+
+        $config = json_decode((string) preg_replace('#^//.*\n#', '', $files['wrangler.jsonc']), true);
+        self::assertSame('worker.js', $config['main'] ?? null);
+        self::assertArrayNotHasKey('send_email', $config, 'the mail server sends it (SMTP_* secrets), not Cloudflare');
+        self::assertStringContainsString('"send": "smtp"', $files['worker.js'], 'what publish:static looks for');
     }
 
     public function testAPageThatNeedsMoreCodeGetsItsOwnPolicyNotTheWholeSite(): void

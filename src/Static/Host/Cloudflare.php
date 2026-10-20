@@ -82,8 +82,13 @@ final class Cloudflare implements HostAdapter
             // Browsers post a form as a navigation, which the file server would answer (405) before
             // the Worker: the Worker goes first for the forms' URLs, and only for them.
             $config['assets']['run_worker_first'] = ['/forms/*'];
-            $recipients = array_values(array_unique(array_merge(...array_map(static fn (array $form) => $form['to'], array_values($build->forms)))));
-            $config['send_email'] = [['name' => 'FORMS_EMAIL', 'allowed_destination_addresses' => $recipients]];
+            // Forms sent by Cloudflare get the send_email binding, locked to their recipients; forms sent
+            // over SMTP use the SMTP_* secrets instead (bin/console publish:static uploads them).
+            $cloudflare = array_filter($build->forms, static fn (array $form) => $form['send'] === 'cloudflare');
+            if ($cloudflare !== []) {
+                $recipients = array_values(array_unique(array_merge(...array_map(static fn (array $form) => $form['to'], array_values($cloudflare)))));
+                $config['send_email'] = [['name' => 'FORMS_EMAIL', 'allowed_destination_addresses' => $recipients]];
+            }
             $forms = [];
             foreach ($build->forms as $name => $form) {
                 $forms[$name] = ['site' => $build->siteName] + array_diff_key($form, ['site' => 1]);

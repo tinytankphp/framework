@@ -1,10 +1,13 @@
 // TinyTank's Worker for a static build on Cloudflare Workers (bin/console build:static, host
 // "cloudflare"). Every page is a static file; this code runs only for what isn't one: the forms,
 // posted to /forms/<name>. It checks them like the PHP site does (config/forms.php: required fields,
-// lengths, email format, choices, the honeypot, the links limit) and emails them through the
-// send_email binding (Cloudflare Email Routing, to your own verified address), then sends the visitor
-// to the form page's "sent" state. The forms' settings are added below by the build.
+// lengths, email format, choices, the honeypot, the links limit) and emails them, then sends the
+// visitor to the form page's "sent" state. Two ways to send, per form (`static.send` in
+// config/forms.php): "cloudflare", the send_email binding (Cloudflare Email Service, Workers Paid), or
+// "smtp", your own mail server (the SMTP_HOST, SMTP_PORT, SMTP_USER and SMTP_PASSWORD secrets,
+// uploaded by `bin/console publish:static`). The forms' settings are added below by the build.
 import { EmailMessage } from 'cloudflare:email';
+import { connect } from 'cloudflare:sockets';
 
 const FORMS = {}; // filled in by the build
 
@@ -55,7 +58,12 @@ export async function handle(request, env, form, name) {
 
     try {
         for (const to of form.to) {
-            await env.FORMS_EMAIL.send(new EmailMessage(form.from, to, message(form, name, values, language, to)));
+            const raw = message(form, name, values, language, to);
+            if (form.send === 'smtp') {
+                await smtp(env, form.from, to, raw);
+            } else {
+                await env.FORMS_EMAIL.send(new EmailMessage(form.from, to, raw));
+            }
         }
     } catch (error) {
         console.error(`Form "${name}" not sent: ${error}`);
@@ -134,6 +142,98 @@ export function message(form, name, values, language, to) {
     ];
 
     return headers.join('\r\n') + '\r\n\r\n' + base64(body).replace(/.{76}/g, '$&\r\n') + '\r\n';
+}
+
+/**
+ * Sends one message through your mail server: port 465 (TLS from the start), 587 (STARTTLS), or any
+ * other without TLS (a local test server). Logs in with AUTH PLAIN, or LOGIN, when SMTP_USER is set.
+ * Exported for the tests.
+ */
+export async function smtp(env, from, to, raw, open = connect) {
+    if (!env.SMTP_HOST) {
+        throw new Error('SMTP_HOST is not set: upload the SMTP secrets (bin/console publish:static).');
+    }
+    const port = Number(env.SMTP_PORT || 465);
+    const tls = port === 465 ? 'on' : port === 587 ? 'starttls' : 'off';
+    let socket = open({ hostname: env.SMTP_HOST, port }, { secureTransport: tls, allowHalfOpen: false });
+    let session = conversation(socket);
+    try {
+        await session.expect(220);
+        const helo = from.split('@')[1] ?? 'localhost';
+        let features = await session.command(`EHLO ${helo}`, 250);
+        if (tls === 'starttls') {
+            await session.command('STARTTLS', 220);
+            session.release();
+            socket = socket.startTls();
+            session = conversation(socket);
+            features = await session.command(`EHLO ${helo}`, 250);
+        }
+        if (env.SMTP_USER) {
+            if (/AUTH[ =][^\n]*\bPLAIN\b/i.test(features)) {
+                await session.command(`AUTH PLAIN ${base64(`\0${env.SMTP_USER}\0${env.SMTP_PASSWORD ?? ''}`)}`, 235);
+            } else {
+                await session.command('AUTH LOGIN', 334);
+                await session.command(base64(env.SMTP_USER), 334);
+                await session.command(base64(env.SMTP_PASSWORD ?? ''), 235);
+            }
+        }
+        await session.command(`MAIL FROM:<${from}>`, 250);
+        await session.command(`RCPT TO:<${to}>`, [250, 251]);
+        await session.command('DATA', 354);
+        // Lines starting with a dot get another one (RFC 5321); the message ends with a lone dot.
+        await session.command(raw.replace(/\r\n\./g, '\r\n..').replace(/\r\n$/, '') + '\r\n.', 250);
+        await session.command('QUIT', 221).catch(() => {});
+    } finally {
+        session.release();
+        await socket.close().catch(() => {});
+    }
+}
+
+/** Reading the server's replies and writing commands, line by line. */
+function conversation(socket) {
+    const reader = socket.readable.getReader();
+    const writer = socket.writable.getWriter();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    // One reply: its lines up to the one with a space after the code ("250 OK", after "250-…" lines).
+    async function reply() {
+        for (;;) {
+            const match = buffer.match(/^(\d{3}) .*\r?\n/m);
+            if (match) {
+                const stop = match.index + match[0].length;
+                const text = buffer.slice(0, stop);
+                buffer = buffer.slice(stop);
+                return [Number(match[1]), text];
+            }
+            const { value, done } = await reader.read();
+            if (done) {
+                throw new Error('The mail server closed the connection.');
+            }
+            buffer += decoder.decode(value, { stream: true });
+        }
+    }
+
+    async function expect(codes) {
+        const [code, text] = await reply();
+        if (![codes].flat().includes(code)) {
+            // The server's last line only: nothing typed comes back (a password never does).
+            throw new Error(`The mail server answered ${code}: ${text.trim().split('\n').pop()}`);
+        }
+        return text;
+    }
+
+    return {
+        expect,
+        async command(line, codes) {
+            await writer.write(new TextEncoder().encode(line + '\r\n'));
+            return expect(codes);
+        },
+        release() {
+            reader.releaseLock();
+            writer.releaseLock();
+        },
+    };
 }
 
 /**
