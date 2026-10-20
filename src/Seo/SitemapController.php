@@ -8,7 +8,8 @@ use TinyTank\Controller;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * /sitemap.xml: in every language, the static GET pages (no placeholders, no file extension), the
+ * /sitemap.xml: in every language, the static GET pages (no placeholders, no file extension, not
+ * `sitemap: false`), the
  * content pages and the published blog posts written in that language.
  */
 final class SitemapController extends Controller
@@ -26,7 +27,7 @@ final class SitemapController extends Controller
             foreach ($this->app->router->routes() as $name => $route) {
                 $methods = $route->getMethods();
                 $path = $route->getPath();
-                if ($name === 'datastar' || ($methods !== [] && !in_array('GET', $methods, true))
+                if ($name === 'datastar' || $route->getOption('sitemap') === false || ($methods !== [] && !in_array('GET', $methods, true))
                     || str_contains($path, '{') || str_contains(basename($path), '.')) {
                     continue;
                 }

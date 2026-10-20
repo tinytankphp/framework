@@ -37,6 +37,19 @@ final class FeedSitemapTest extends FrameworkTestCase
         self::assertContains('2026-09-12', $this->values($sitemap, '//s:url[s:loc="https://example.test/blog/alpha"]/s:lastmod'));
     }
 
+    public function testARouteCanStayOutOfTheSitemap(): void
+    {
+        $app = $this->kernel(debug: true);
+        $app->get('/listed', static fn () => 'a page', 'listed');
+        $app->get('/fragment', static fn () => '<div id="x"></div>', 'fragment', sitemap: false);
+        $urls = $this->values($this->xml($this->request($app, '/sitemap.xml'), 'application/xml'), '//s:loc');
+
+        self::assertContains('https://example.test/listed', $urls);
+        self::assertNotContains('https://example.test/fragment', $urls, 'sitemap: false');
+        self::assertNotContains('https://example.test/it/fragment', $urls, 'in no language');
+        self::assertSame(200, $this->request($app, '/fragment')->getStatusCode(), 'still a page');
+    }
+
     public function testRobotsPointsAtTheSitemap(): void
     {
         $response = $this->request($this->kernel(), '/robots.txt');

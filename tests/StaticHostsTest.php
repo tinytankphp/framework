@@ -65,7 +65,7 @@ final class StaticHostsTest extends TestCase
         $files = (new Cloudflare())->files($build);
 
         $config = json_decode((string) preg_replace('#^//.*\n#', '', $files['wrangler.jsonc'] ?? ''), true);
-        self::assertSame(['name' => 'lab-909', 'compatibility_date' => Cloudflare::COMPATIBILITY_DATE, 'assets' => ['directory' => '.', 'binding' => 'ASSETS', 'html_handling' => 'auto-trailing-slash', 'not_found_handling' => '404-page']], $config, 'no forms: no Worker code, only files');
+        self::assertSame(['name' => 'lab-909', 'compatibility_date' => Cloudflare::COMPATIBILITY_DATE, 'assets' => ['directory' => '.', 'html_handling' => 'auto-trailing-slash', 'not_found_handling' => '404-page']], $config, 'no forms: no Worker code, only files (and no binding: wrangler refuses one without code)');
         self::assertSame(".assetsignore\n.tinytank-static\n.wrangler\nwrangler.jsonc\n", $files['.assetsignore'] ?? null);
         self::assertArrayNotHasKey('worker.js', $files);
         self::assertStringContainsString('"name": "my-site"', (new Cloudflare())->files(new Build('/out', 'https://example.com', 'Lab909', ['name' => 'My Site']))['wrangler.jsonc'], 'static.name wins');
@@ -83,6 +83,7 @@ final class StaticHostsTest extends TestCase
 
         $config = json_decode((string) preg_replace('#^//.*\n#', '', $files['wrangler.jsonc']), true);
         self::assertSame('worker.js', $config['main'] ?? null);
+        self::assertSame('ASSETS', $config['assets']['binding'] ?? null, 'the Worker serves the files it doesn\'t answer');
         self::assertSame(['/forms/*'], $config['assets']['run_worker_first'] ?? null, 'a browser\'s post is a navigation: the Worker answers it, not the file server');
         self::assertSame([['name' => 'FORMS_EMAIL', 'allowed_destination_addresses' => ['me@example.com']]], $config['send_email'] ?? null);
         self::assertStringContainsString('worker.js', $files['.assetsignore'], 'the code is never served');

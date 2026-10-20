@@ -546,6 +546,8 @@ final class Kernel
      * @param int                                                  $priority     higher is tried first (default 0); a negative
      *                                                                           priority keeps a catch-all such as the content
      *                                                                           pages after every other route
+     * @param bool                                                 $sitemap      false: a GET page that stays out of
+     *                                                                           /sitemap.xml (a fragment, a search list)
      */
     public function route(
         string|array $methods,
@@ -555,17 +557,18 @@ final class Kernel
         array $requirements = [],
         bool $csrf = true,
         int $priority = 0,
+        bool $sitemap = true,
     ): void {
-        $this->router->add((array) $methods, $path, $handler, $name, $requirements, $csrf, $priority);
+        $this->router->add((array) $methods, $path, $handler, $name, $requirements, $csrf, $priority, $sitemap);
     }
 
     /**
      * @param \Closure|array{class-string, string}|class-string $handler
      * @param array<string, string> $requirements
      */
-    public function get(string $path, \Closure|array|string $handler, ?string $name = null, array $requirements = [], int $priority = 0): void
+    public function get(string $path, \Closure|array|string $handler, ?string $name = null, array $requirements = [], int $priority = 0, bool $sitemap = true): void
     {
-        $this->route('GET', $path, $handler, $name, $requirements, priority: $priority);
+        $this->route('GET', $path, $handler, $name, $requirements, priority: $priority, sitemap: $sitemap);
     }
 
     /**

@@ -14,13 +14,16 @@ change behaviour, and its notes say what to update in your site.
   following links from the home page, the sitemap, the feed and robots.txt, and written where the
   host serves it at the PHP site's URL, with `public/`, the published media and `404.html`. It
   reports by page what needs the server (Datastar server actions, forms the host doesn't answer)
-  and stops on broken links. `site.static` tells templates. Config: `static.out`, `static.base_url`,
+  and stops on broken links; a plain Datastar GET of a page of the site is built like a link (the
+  file answers it). `site.static` tells templates. Config: `static.out`, `static.base_url`,
   `static.paths`, `static.host`, `static.name`. See Deploying → Static builds.
 - **Hosts for static builds**, behind `TinyTank\Static\HostAdapter` (where each page goes, and the
   host's own files): `cloudflare`, the default, for Cloudflare Workers with static assets
   (`<path>.html`, served at the PHP site's URLs; `_headers` with one site-wide Content Security
   Policy, pages that add a script source getting their own rule; `_redirects`; `wrangler.jsonc` for
   `npx wrangler deploy`; checked against Cloudflare's limits), and `none` (redirects as HTML pages).
+- **A route can stay out of the sitemap**: `sitemap: false` in `$app->get()` / `$app->route()`, for
+  a GET page that isn't one on its own (a fragment Datastar loads).
 - **Forms on static sites**: a form with `'static' => ['from' => …]` in `config/forms.php` is
   answered by the host. On Cloudflare, the build adds a Worker (only for `/forms/<name>`) that
   checks it like the PHP site (required fields, lengths, email, choices, honeypot, links limit, the
@@ -31,6 +34,11 @@ change behaviour, and its notes say what to update in your site.
 
 ### Skeleton
 
+- **The blog search works on static sites**: `/blog/search` (route `blog_search`,
+  `templates/blog/search.twig`, `noindex`) lists every post with its words and tags; in a static
+  build the search box and tags load it on first use and filter in the browser. For an existing
+  site, copy the route (with `sitemap: false`), `BlogController::search()`,
+  `templates/blog/search.twig` and the `filter` part of `templates/blog/index.twig`.
 - **The contact form works on static sites**: `templates/_forms/contact.twig` posts with
   `form_action()` and leaves out Datastar's submit in a static build. For an existing site, copy
   its `<form …>` tag. `deploy/` and `var/static-cache/` in `.gitignore`; a commented `static`

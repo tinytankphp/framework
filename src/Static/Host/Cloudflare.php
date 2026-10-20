@@ -63,10 +63,12 @@ final class Cloudflare implements HostAdapter
         $config = [
             'name' => self::workerName($build),
             'compatibility_date' => self::COMPATIBILITY_DATE,
-            'assets' => ['directory' => '.', 'binding' => 'ASSETS', 'html_handling' => 'auto-trailing-slash', 'not_found_handling' => '404-page'],
+            'assets' => ['directory' => '.', 'html_handling' => 'auto-trailing-slash', 'not_found_handling' => '404-page'],
         ];
         if ($build->forms !== []) {
+            // Only with Worker code: an assets-only Worker can't have the binding (wrangler refuses it).
             $config['main'] = 'worker.js';
+            $config['assets']['binding'] = 'ASSETS';
             // Browsers post a form as a navigation, which the file server would answer (405) before
             // the Worker: the Worker goes first for the forms' URLs, and only for them.
             $config['assets']['run_worker_first'] = ['/forms/*'];

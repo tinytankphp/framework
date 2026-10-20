@@ -43,6 +43,7 @@ final class Router
      * @param \Closure|array{class-string, string}|class-string    $handler
      * @param array<string, string>                                $requirements e.g. ['slug' => '[a-z0-9-]+']
      * @param int                                                  $priority     higher first; equal priorities in the order added
+     * @param bool                                                 $sitemap      false: not in /sitemap.xml (a fragment, a feed)
      */
     public function add(
         array $methods,
@@ -52,10 +53,11 @@ final class Router
         array $requirements = [],
         bool $csrf = true,
         int $priority = 0,
+        bool $sitemap = true,
     ): void {
         $methods = array_map('strtoupper', $methods);
         $name ??= strtolower(implode('_', $methods)) . '_' . trim((string) preg_replace('/\W+/', '_', $path), '_');
-        $this->routes->add($name, new Route($path, ['_csrf' => $csrf], $requirements, methods: $methods), $priority);
+        $this->routes->add($name, new Route($path, ['_csrf' => $csrf], $requirements, ['sitemap' => $sitemap], methods: $methods), $priority);
         $this->handlers[$name] = $handler;
     }
 

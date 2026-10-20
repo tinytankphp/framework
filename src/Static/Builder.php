@@ -20,7 +20,8 @@ use TinyTank\Kernel;
  * and collections published next to the pages.
  *
  * What only a server can do is reported by page, in Build::$dynamic: Datastar actions that call the
- * server (live search, template actions) and forms that post to the site.
+ * server (template actions, other methods than GET) and forms that post to the site. A Datastar GET
+ * to a plain page of the site (`@get('/blog/search')`) is built like a link: the file answers it.
  */
 final class Builder
 {
@@ -130,7 +131,7 @@ final class Builder
         $file = $this->host->file($path);
         $this->write($file, $body);
         $headers = [];
-        foreach (['Content-Security-Policy', 'Content-Security-Policy-Report-Only', 'X-Content-Type-Options', 'Referrer-Policy', 'Permissions-Policy', 'X-Frame-Options'] as $name) {
+        foreach (['Content-Security-Policy', 'Content-Security-Policy-Report-Only', 'X-Content-Type-Options', 'Referrer-Policy', 'Permissions-Policy', 'X-Frame-Options', 'X-Robots-Tag'] as $name) {
             if ($response->headers->has($name)) {
                 $headers[$name] = (string) $response->headers->get($name);
             }
@@ -156,6 +157,9 @@ final class Builder
         foreach ($actions as [, $method, $url]) {
             $url = html_entity_decode($url);
             parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+            if ($method === 'get' && !isset($query['config']) && $this->internal($url) !== null) {
+                continue; // a plain page of this site, fetched by Datastar: built like any other (see links())
+            }
             $config = json_decode((string) base64_decode(strtr(explode('.', is_string($query['config'] ?? null) ? $query['config'] : '')[0], '-_', '+/')), true);
             $target = is_array($config) && is_string($config['t'] ?? null) ? "template {$config['t']}" : (string) parse_url($url, PHP_URL_PATH);
             $found[] = 'a Datastar ' . strtoupper($method) . " action to the server ({$target})";
@@ -261,6 +265,13 @@ final class Builder
     {
         // Attributes in HTML (srcset too), <loc> in the sitemap, Sitemap: in robots.txt.
         preg_match_all('#(?:href|src|srcset|content)="([^"]+)"|<loc>([^<]+)</loc>|^Sitemap:\s*(\S+)#mi', $body, $matches, PREG_SET_ORDER | PREG_UNMATCHED_AS_NULL);
+        // Pages Datastar fetches with a plain GET (`@get('/blog/search')`): files too, in a static build.
+        preg_match_all(self::DATASTAR, $body, $actions, PREG_SET_ORDER);
+        foreach ($actions as [, $method, $url]) {
+            if ($method === 'get' && !str_contains($url, 'config=')) {
+                $matches[] = [null, $url, null, null];
+            }
+        }
         $links = [];
         foreach ($matches as $match) {
             $value = html_entity_decode((string) ($match[1] ?? $match[2] ?? $match[3] ?? ''));
