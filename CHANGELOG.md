@@ -7,6 +7,15 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-10-20
+
+TinyTank as a static site generator: `build:static` writes the whole site as plain files,
+`preview:static` serves them as the host will, and `publish:static` puts them on Cloudflare Workers,
+with forms that keep working (sent by a small Worker, through Cloudflare or your own mail server).
+Nothing changes for a site that stays on PHP, and nothing needs updating in an existing site. To
+build one statically, see the docs' Static Site Generator section; the skeleton's changes below
+(the contact form, the blog search, the DDEV port) say what to copy.
+
 ### Added
 
 - **Static builds**: `bin/console build:static` renders the whole site into plain files (`deploy/` by
@@ -287,7 +296,8 @@ The first tagged release. TinyTank is in beta: the API may still change between 
   want the same: `config/app.php` (`log` and `cdn` sections), `src/Controller/PageController.php`
   (`cdn: false` support), `config/routes.php` (blog page numbers up to 6 digits), `.env.example`.
 
-[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.6...HEAD
+[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.7...HEAD
+[0.1.7]: https://github.com/tinytankphp/framework/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/tinytankphp/framework/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/tinytankphp/framework/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/tinytankphp/framework/compare/v0.1.3...v0.1.4
