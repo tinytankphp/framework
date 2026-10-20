@@ -52,6 +52,7 @@ abstract class KernelTestCase extends TestCase
         $this->logDir ??= $this->tempDir('log'); // one per test, shared by the apps it boots
         $app = Kernel::boot($root, $debug, array_replace_recursive([
             'cache_dir' => $this->tempDir('cache'),
+            'state_dir' => $this->tempDir('state'),
             'images_dir' => $this->tempDir('images'),
             'log' => ['path' => $this->logDir . '/app.log'],
         ], $overrides));

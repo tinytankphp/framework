@@ -201,8 +201,8 @@ final class FormsTest extends FrameworkTestCase
     public function testTheRateLimitStoresNoIpAddress(): void
     {
         $forms = ['contact' => ['spam' => ['rate_limit' => '2/hour']] + self::CONTACT];
-        $cache = $this->tempDir('cache');
-        $app = $this->kernel(overrides: ['forms' => $forms, 'cache_dir' => $cache, 'mailer' => ['dsn' => 'null://null', 'from' => 's@example.test']]);
+        $state = $this->tempDir('state');
+        $app = $this->kernel(overrides: ['forms' => $forms, 'state_dir' => $state, 'mailer' => ['dsn' => 'null://null', 'from' => 's@example.test']]);
         $app->forms->useTransport(new \Symfony\Component\Mailer\Transport\NullTransport());
 
         self::assertTrue($app->forms->submit('contact', self::post(self::VALID))->sent);
@@ -211,7 +211,7 @@ final class FormsTest extends FrameworkTestCase
         self::assertTrue($app->forms->submit('contact', self::post(self::VALID, ip: '198.51.100.1'))->sent, 'another visitor');
 
         $stored = '';
-        foreach (glob($cache . '/forms/rate-limits/contact/*') ?: [] as $file) {
+        foreach (glob($state . '/forms/rate-limits/contact/*') ?: [] as $file) {
             $stored .= basename($file) . file_get_contents($file);
         }
         self::assertNotSame('', $stored);

@@ -67,6 +67,12 @@ final class Kernel
 
     public readonly string $cacheDir;
 
+    /**
+     * What the site keeps between requests and across deploys (the forms' rate limits): var/state/.
+     * Never inside var/cache, which every deploy rebuilds.
+     */
+    public readonly string $stateDir;
+
     /** Where post, page and video poster files are served from: '' (this site) or a CDN (MEDIA_URL). */
     public readonly string $mediaUrl;
 
@@ -142,6 +148,7 @@ final class Kernel
             $config['cdn'] ?? [],
             $config['theme']['default'] ?? 'system',
             self::globals($config, $root),
+            $config['state_dir'] ?? null,
         );
 
         // The app's extension point: services, Twig extensions and globals, deploy steps.
@@ -200,6 +207,7 @@ final class Kernel
      *                                       `theme.default`): 'system', 'light' or 'dark'
      * @param array<string, mixed> $globals  the site's own values for every template, as `globals`
      *                                       (config/globals.php). Public: never put secrets there
+     * @param string|null          $stateDir what's kept across deploys (form rate limits); var/state/ by default
      */
     public function __construct(
         public readonly string $root,
@@ -220,12 +228,14 @@ final class Kernel
         array $cdn = [],
         string $themeDefault = 'system',
         public readonly array $globals = [],
+        ?string $stateDir = null,
     ) {
         $mediaUrl = rtrim($mediaUrl, '/');
         if ($mediaUrl !== '' && !preg_match('#^https://[^/\s?\#]+(/[^\s?\#]*)?$#', $mediaUrl)) {
             throw new \InvalidArgumentException("MEDIA_URL must be an https:// URL, e.g. https://cdn.example.com (got \"{$mediaUrl}\").");
         }
         $this->cacheDir = $cacheDir ?? $root . '/var/cache';
+        $this->stateDir = $stateDir ?? $root . '/var/state';
         $contentDir ??= $root . '/content';
         $this->site = $site ?? new Site('http://localhost', 'TinyTank');
         $this->container = new Container($this);
@@ -323,7 +333,7 @@ final class Kernel
                 $this->noStore = true;
             },
             $secret,
-            $this->cacheDir . '/forms',
+            $this->stateDir . '/forms',
             $mailer['dsn'] ?? null,
             $mailer['from'] ?? null,
             $this->site->name(),
