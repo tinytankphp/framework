@@ -5,9 +5,38 @@ declare(strict_types=1);
 namespace TinyTank\Tests;
 
 use Psr\Container\NotFoundExceptionInterface;
+use TinyTank\Kernel;
 
 final class KernelTest extends FrameworkTestCase
 {
+    public function testASiteThatCantStartShowsAPlain500AndLogsWhy(): void
+    {
+        $root = $this->copyToTemp(self::PROJECT, 'project');
+        self::write($root, ['config/routes.php' => '<?php return static function (): void { throw new RuntimeException("routes.php is broken; secret=s3cret"); };']);
+        $log = $this->tempDir('log') . '/php.log';
+        $previous = ini_set('error_log', $log);
+        try {
+            ob_start();
+            Kernel::serve($root);
+            $page = (string) ob_get_clean();
+        } finally {
+            ini_set('error_log', (string) $previous);
+        }
+
+        self::assertStringContainsString('<h1>Temporarily unavailable</h1>', $page);
+        self::assertStringNotContainsString('routes.php', $page, 'nothing about the cause for visitors');
+        self::assertStringContainsString('TinyTank: the site could not start: RuntimeException: routes.php is broken', (string) file_get_contents($log));
+        self::assertStringContainsString('routes.php:1', (string) file_get_contents($log), 'where');
+
+        putenv('APP_DEBUG=1');
+        try {
+            $this->expectExceptionMessage('routes.php is broken');
+            Kernel::serve($root);
+        } finally {
+            putenv('APP_DEBUG=0');
+        }
+    }
+
     public function testDispatchesClosuresControllerMethodsAndInvokableControllers(): void
     {
         $app = $this->kernel();

@@ -590,7 +590,35 @@ final class Kernel
         $this->route('POST', $path, $handler, $name, $requirements);
     }
 
-    /** Handles the current HTTP request (public/index.php). */
+    /**
+     * public/index.php: boots the site and answers the current request. If the site can't start (a
+     * mistake in config/, a missing extension), visitors get a plain 500 page and PHP's log the reason;
+     * with APP_DEBUG=1 the error shows as usual. Errors while answering are the kernel's (run()).
+     */
+    public static function serve(string $root): void
+    {
+        try {
+            $app = self::boot($root);
+        } catch (\Throwable $e) {
+            if (filter_var(getenv('APP_DEBUG') ?: ($_ENV['APP_DEBUG'] ?? false), FILTER_VALIDATE_BOOL)) {
+                throw $e;
+            }
+            // The message and place only: a trace's arguments could hold a password from .env.
+            error_log(sprintf('TinyTank: the site could not start: %s: %s in %s:%d', $e::class, $e->getMessage(), $e->getFile(), $e->getLine()));
+            if (!headers_sent()) {
+                http_response_code(500);
+                header('Content-Type: text/html; charset=UTF-8');
+                header('Cache-Control: no-store');
+            }
+            echo "<!doctype html>\n<html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><title>Temporarily unavailable</title>\n"
+                . "<h1>Temporarily unavailable</h1><p>The site can't be shown right now. Please try again in a few minutes.</p>\n";
+
+            return;
+        }
+        $app->run();
+    }
+
+    /** Handles the current HTTP request (public/index.php, through serve()). */
     public function run(): void
     {
         // Debug: Symfony's exception page, and PHP warnings throw.
