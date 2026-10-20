@@ -7,6 +7,19 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-10-21
+
+Deploy safety. `deploy` now checks the site first (`bin/console check`), builds aside and switches
+last, so a failure leaves the live site as it was, and keeps the previous build for
+`deploy --rollback`. To check in an existing site:
+
+- a deploy now **stops without a Vite build** when the site has a `vite.config.js` (run
+  `npm run build` first, or `deploy --assets`), and when `check` finds an error (a page whose
+  template is missing, an `APP_SECRET` shorter than 32 characters…): run `bin/console check` once;
+- app deploy steps without `before`/`after` now run before `switch`;
+- the forms' rate limits move to `var/state/` (they restart from zero once);
+- in the skeleton: `public/index.php` and `.gitignore` (see Skeleton).
+
 ### Added
 
 - **`bin/console check`**: a read-only preflight (compiled into a temporary folder): PHP and its
@@ -330,7 +343,8 @@ The first tagged release. TinyTank is in beta: the API may still change between 
   want the same: `config/app.php` (`log` and `cdn` sections), `src/Controller/PageController.php`
   (`cdn: false` support), `config/routes.php` (blog page numbers up to 6 digits), `.env.example`.
 
-[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.7...HEAD
+[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.8...HEAD
+[0.1.8]: https://github.com/tinytankphp/framework/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/tinytankphp/framework/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/tinytankphp/framework/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/tinytankphp/framework/compare/v0.1.4...v0.1.5
