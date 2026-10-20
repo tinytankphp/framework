@@ -67,7 +67,7 @@ final class ConsoleTest extends FrameworkTestCase
         self::assertSame(Command::SUCCESS, $tester->getStatusCode());
         preg_match_all('/^\s{2}(\S+)/m', $tester->getDisplay(), $rows);
         self::assertSame(
-            ['Step', 'composer', 'cache', 'fixture-closure', 'routes', 'blog', 'pages', 'collections', 'embeds', 'translations', 'templates', 'vite', 'fixture-command', 'opcache', 'cdn'],
+            ['Step', 'composer', 'cache', 'fixture-closure', 'routes', 'blog', 'pages', 'collections', 'embeds', 'translations', 'templates', 'vite', 'fixture-command', 'switch', 'opcache', 'cdn'],
             $rows[1],
         );
         self::assertStringContainsString('vite (skipped)', self::text($tester));
@@ -91,6 +91,85 @@ final class ConsoleTest extends FrameworkTestCase
         self::assertFileExists("{$root}/var/cache/fixture-command.txt");
         self::assertFileExists("{$root}/public/media/blog/alpha/cover.png");
         self::assertDirectoryDoesNotExist("{$root}/public/media/blog/delta");
+        self::assertDirectoryDoesNotExist("{$root}/var/deploy/next", 'built aside, then moved in');
+    }
+
+    public function testAFailedDeployLeavesTheLiveSiteAsItWas(): void
+    {
+        $root = $this->project();
+        self::write($root, ['var/cache/.gitkeep' => '']);
+        self::assertSame(Command::SUCCESS, $this->deploy($root, ['--skip' => 'composer', '--opcache' => 'none'])->getStatusCode());
+        self::assertFileExists("{$root}/var/cache/.gitkeep", 'still committed in the skeleton');
+        $matcher = (string) file_get_contents("{$root}/var/cache/routes.matcher.php");
+
+        // The next deploy fails halfway: after the posts were compiled and their files published.
+        self::write($root, ['config/bootstrap.php' => '<?php return static function (TinyTank\Kernel $app): void {
+            $app->addDeployStep("fails", static fn () => false, after: "collections");
+        };']);
+        self::remove("{$root}/content/blog/2026/09/alpha");
+        $tester = $this->deploy($root, ['--skip' => 'composer', '--opcache' => 'none']);
+
+        self::assertSame(Command::FAILURE, $tester->getStatusCode());
+        self::assertSame($matcher, file_get_contents("{$root}/var/cache/routes.matcher.php"), 'the live cache is untouched');
+        self::assertFileExists("{$root}/var/cache/fixture-step.txt", 'all of it');
+        self::assertFileExists("{$root}/public/media/blog/alpha/cover.png", 'and so are the published files');
+    }
+
+    public function testAMissingViteBuildStopsTheDeployBeforeTheSwitch(): void
+    {
+        $root = $this->project();
+        $tester = $this->deploy($root, ['--skip' => 'composer', '--opcache' => 'none']);
+        self::assertSame(Command::SUCCESS, $tester->getStatusCode(), 'no vite.config.js: a site without Vite');
+        self::assertStringContainsString('No Vite build', self::text($tester));
+
+        self::write($root, ['vite.config.js' => 'export default {};']);
+        $tester = $this->deploy($root, ['--skip' => 'composer', '--opcache' => 'none']);
+        self::assertSame(Command::FAILURE, $tester->getStatusCode());
+        self::assertStringContainsString('every page needs it: run `npm run build` first', self::text($tester));
+        self::assertStringContainsString('Deploy stopped at step "vite"', self::text($tester));
+        self::assertFileExists("{$root}/var/cache/routes.matcher.php", 'the site still answers, from the last deploy');
+
+        self::write($root, ['public/build/.vite/manifest.json' => '{}']);
+        self::assertSame(Command::SUCCESS, $this->deploy($root, ['--skip' => 'composer', '--opcache' => 'none'])->getStatusCode());
+        self::assertFileExists("{$root}/var/cache/vite.php");
+    }
+
+    public function testRollbackPutsThePreviousDeployBack(): void
+    {
+        $root = $this->project();
+        $options = ['--skip' => 'composer', '--opcache' => 'none'];
+        $tester = $this->deploy($root, ['--rollback' => true] + $options);
+        self::assertSame(Command::FAILURE, $tester->getStatusCode());
+        self::assertStringContainsString('no previous deploy to go back to', self::text($tester));
+
+        $this->deploy($root, $options);
+        $blog = (string) file_get_contents("{$root}/var/cache/blog.php");
+        // The next deploy removes a post and its files.
+        self::remove("{$root}/content/blog/2026/09/alpha");
+        $this->deploy($root, $options);
+        self::assertNotSame($blog, file_get_contents("{$root}/var/cache/blog.php"));
+        self::assertDirectoryDoesNotExist("{$root}/public/media/blog/alpha");
+
+        $tester = $this->deploy($root, ['--rollback' => true] + $options);
+        self::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        self::assertSame($blog, file_get_contents("{$root}/var/cache/blog.php"), 'the previous cache');
+        self::assertFileExists("{$root}/public/media/blog/alpha/cover.png", 'and its files');
+
+        $this->deploy($root, ['--rollback' => true] + $options);
+        self::assertDirectoryDoesNotExist("{$root}/public/media/blog/alpha", 'a second rollback undoes the first');
+    }
+
+    public function testTheSwitchedCacheServesWithoutRebuildingAnything(): void
+    {
+        $root = $this->project();
+        $this->deploy($root, ['--skip' => 'composer', '--opcache' => 'none']);
+        $files = static fn (): array => array_map(static fn (\SplFileInfo $file) => $file->getPathname(), iterator_to_array(new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator("{$root}/var/cache", \FilesystemIterator::SKIP_DOTS)), false));
+        $built = $files();
+
+        $app = $this->bootKernel($root, false, ['cache_dir' => "{$root}/var/cache", 'content_dir' => "{$root}/content"]);
+        self::assertSame(200, $this->request($app, '/')->getStatusCode());
+        self::assertSame(200, $this->request($app, '/blog')->getStatusCode());
+        self::assertSame($built, $files(), 'built in another folder, the cache is used as it is (nothing refers to where it was made)');
     }
 
     public function testDeployPurgesTheCdnLast(): void
@@ -250,6 +329,14 @@ final class ConsoleTest extends FrameworkTestCase
         } finally {
             putenv('FAKE_EXIT');
         }
+    }
+
+    private static function remove(string $dir): void
+    {
+        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::CHILD_FIRST) as $item) {
+            $item->isDir() ? rmdir($item->getPathname()) : unlink($item->getPathname());
+        }
+        rmdir($dir);
     }
 
     /** A writable copy of the fixture project, with the fixture content inside it. */

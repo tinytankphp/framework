@@ -23,17 +23,23 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * change. `--list-steps` shows them; `--skip=name,name` leaves some out; the app adds its own with
  * $app->addDeployStep() in config/bootstrap.php.
  *
+ * Build first, switch last: the new cache and the published files are built aside, in var/deploy/next/,
+ * while the site keeps answering from the current ones; a step that fails leaves the live site as it
+ * was. `switch` then moves them in, keeping the previous ones in var/deploy/prev/ for
+ * `deploy --rollback`.
+ *
  *   assets        (only with --assets) npm run build
  *   composer      composer dump-autoload --optimize --classmap-authoritative
- *   cache         empty var/cache
+ *   cache         start a new cache, in var/deploy/next/cache/
  *   routes        compile the router
- *   blog          compile the posts and copy their files to public/media/blog/
- *   pages         compile the content pages and copy their files to public/media/pages/
- *   collections   compile the data collections
+ *   blog          compile the posts and publish their files (for public/media/blog/)
+ *   pages         compile the content pages and publish their files (for public/media/pages/)
+ *   collections   compile the data collections and publish their items' files (for public/media/collections/)
  *   embeds        download the posters and titles of ::youtube / ::vimeo videos to public/media/embeds/
  *   translations  compile the translation catalogues
  *   templates     compile every Twig template
- *   vite          cache the Vite manifest
+ *   vite          cache the Vite manifest (missing: the deploy stops, unless the site has no Vite config)
+ *   switch        put the new cache and files in place of the live ones (the previous ones: var/deploy/prev/)
  *   opcache       refresh the web server's Opcache (the CLI has its own, so it cannot do this by
  *                 itself), depending on --opcache / APP_OPCACHE:
  *        cachetool  invalidate this project's scripts in PHP-FPM, then precompile them over its
@@ -49,7 +55,13 @@ final class DeployCommand extends Command
 {
     private const OPCACHE_MODES = ['cachetool', 'reload', 'none'];
 
-    /** @param (\Closure(?bool): Kernel)|null $boot shared kernel factory from TinyTank\Console\Console */
+    /** The published files, under public/, switched with the cache. */
+    public const MEDIA = [Blog::ASSET_URL, Pages::ASSET_URL, Collections::ASSET_URL];
+
+    /** Where the next build is made, and the previous one kept (for --rollback). */
+    public const WORK_DIR = '/var/deploy';
+
+    /** @param (\Closure(?bool, array<string, mixed>=): Kernel)|null $boot shared kernel factory from TinyTank\Console\Console */
     public function __construct(private readonly string $root, private readonly ?\Closure $boot = null)
     {
         parent::__construct();
@@ -68,7 +80,8 @@ final class DeployCommand extends Command
             ->addOption('skip', null, InputOption::VALUE_REQUIRED, 'Comma-separated steps to leave out (see --list-steps)', '')
             ->addOption('list-steps', null, InputOption::VALUE_NONE, 'Show the steps in order, including the app\'s, and exit')
             ->addOption('skip-composer', null, InputOption::VALUE_NONE, 'Same as --skip=composer')
-            ->addOption('skip-opcache', null, InputOption::VALUE_NONE, 'Same as --opcache=none');
+            ->addOption('skip-opcache', null, InputOption::VALUE_NONE, 'Same as --opcache=none')
+            ->addOption('rollback', null, InputOption::VALUE_NONE, 'Put the previous deploy back (its cache and files), then refresh Opcache and purge the CDN');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -89,15 +102,18 @@ final class DeployCommand extends Command
             return Command::INVALID;
         }
 
-        // Booted first (in production mode) so config/bootstrap.php can add its steps.
-        $app = $this->boot !== null ? ($this->boot)(false) : Kernel::boot($this->root, debug: false);
+        // Booted first (in production mode) so config/bootstrap.php can add its steps; it builds the next
+        // cache aside, so the live site keeps answering from the current one until `switch`.
+        $live = $this->liveCacheDir();
+        $next = ['cache_dir' => $this->root . self::WORK_DIR . '/next/cache'];
+        $app = $this->boot !== null ? ($this->boot)(false, $next) : Kernel::boot($this->root, false, $next);
         if ($app->debug) {
             $io->error('The kernel was already booted in debug mode; run deploy on its own.');
 
             return Command::FAILURE;
         }
         try {
-            $steps = $this->steps($app, $input, $output, $opcache, $reloadCommand);
+            $steps = $this->steps($app, $input, $output, $opcache, $reloadCommand, $live);
         } catch (\InvalidArgumentException $e) {
             $io->error($e->getMessage());
 
@@ -122,6 +138,10 @@ final class DeployCommand extends Command
             ));
 
             return Command::SUCCESS;
+        }
+
+        if ($input->getOption('rollback')) {
+            return $this->rollback($steps, $skip, $live, $io);
         }
 
         $io->title('TinyTank deploy');
@@ -152,9 +172,10 @@ final class DeployCommand extends Command
      *
      * @return array<string, array{description: string, run: \Closure(): mixed}> run() returning false stops the deploy
      */
-    private function steps(Kernel $app, InputInterface $input, OutputInterface $output, string $opcache, string $reloadCommand): array
+    private function steps(Kernel $app, InputInterface $input, OutputInterface $output, string $opcache, string $reloadCommand, string $live): array
     {
         $io = new SymfonyStyle($input, $output);
+        $next = $this->root . self::WORK_DIR . '/next';
         $steps = [];
         if ($input->getOption('assets')) {
             $steps['assets'] = ['description' => 'npm run build', 'run' => function () use ($io) {
@@ -173,24 +194,27 @@ final class DeployCommand extends Command
                 $io,
             );
         }];
-        $steps['cache'] = ['description' => 'Empty var/cache', 'run' => static function () use ($io, $app) {
-            $io->section('Rebuilding var/cache');
-            Cache::clear($app->cacheDir);
+        $steps['cache'] = ['description' => 'Start a new cache, aside (var/deploy/next/)', 'run' => static function () use ($io, $app, $next) {
+            $io->section('Building the next cache (var/deploy/next/)');
+            // What an earlier deploy that failed left behind.
+            self::remove($next);
             // Later steps (including the app's) may write straight into it.
-            if (!is_dir($app->cacheDir) && !mkdir($app->cacheDir, 0775, true) && !is_dir($app->cacheDir)) {
-                throw new \RuntimeException("Cannot create {$app->cacheDir}.");
+            foreach ([$app->cacheDir, ...array_map(static fn (string $url) => "{$next}/public{$url}", self::MEDIA)] as $dir) {
+                if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
+                    throw new \RuntimeException("Cannot create {$dir}.");
+                }
             }
         }];
         $steps['routes'] = ['description' => 'Compile the routes', 'run' => static function () use ($io, $app) {
             $app->router->warmup();
             $io->writeln(sprintf(' ✔ %d routes compiled', count($app->router->routes())));
         }];
-        $steps['blog'] = ['description' => 'Compile the blog posts and publish their files to public' . Blog::ASSET_URL . '/', 'run' => function () use ($io, $app) {
+        $steps['blog'] = ['description' => 'Compile the blog posts and publish their files (for public' . Blog::ASSET_URL . '/)', 'run' => static function () use ($io, $app, $next) {
             [$posts, $versions] = $app->blog->warmup();
             $io->writeln(sprintf(' ✔ %d blog posts compiled (%d language versions)', $posts, $versions));
-            $io->writeln(sprintf(' ✔ %d post files published to public%s/', $app->blog->publishAssets($this->root . '/public'), Blog::ASSET_URL));
+            $io->writeln(sprintf(' ✔ %d post files published for public%s/', $app->blog->publishAssets("{$next}/public"), Blog::ASSET_URL));
         }];
-        $steps['pages'] = ['description' => 'Compile the content pages and publish their files to public' . Pages::ASSET_URL . '/', 'run' => function () use ($io, $app) {
+        $steps['pages'] = ['description' => 'Compile the content pages and publish their files (for public' . Pages::ASSET_URL . '/)', 'run' => static function () use ($io, $app, $next) {
             [$pages, $versions] = $app->pages->warmup();
             $shadowed = $app->shadowedPages();
             if ($shadowed !== []) {
@@ -201,12 +225,12 @@ final class DeployCommand extends Command
                 return false;
             }
             $io->writeln(sprintf(' ✔ %d content pages compiled (%d language versions)', $pages, $versions));
-            $io->writeln(sprintf(' ✔ %d page files published to public%s/', $app->pages->publishAssets($this->root . '/public'), Pages::ASSET_URL));
+            $io->writeln(sprintf(' ✔ %d page files published for public%s/', $app->pages->publishAssets("{$next}/public"), Pages::ASSET_URL));
         }];
-        $steps['collections'] = ['description' => 'Compile the data collections and publish their item folders\' files to public' . Collections::ASSET_URL . '/', 'run' => function () use ($io, $app) {
+        $steps['collections'] = ['description' => 'Compile the data collections and publish their item folders\' files (for public' . Collections::ASSET_URL . '/)', 'run' => static function () use ($io, $app, $next) {
             $counts = $app->collections->warmup();
             $io->writeln(sprintf(' ✔ %d data collection%s compiled (%d items)', count($counts), count($counts) === 1 ? '' : 's', array_sum($counts)));
-            $io->writeln(sprintf(' ✔ %d item files published to public%s/', $app->collections->publishAssets($this->root . '/public'), Collections::ASSET_URL));
+            $io->writeln(sprintf(' ✔ %d item files published for public%s/', $app->collections->publishAssets("{$next}/public"), Collections::ASSET_URL));
         }];
         $steps['embeds'] = ['description' => 'Download the posters of embedded videos to public' . Embeds::URL . '/', 'run' => static function () use ($io, $app) {
             [$videos, $fetched, $failed] = self::fetchEmbeds($app);
@@ -222,15 +246,39 @@ final class DeployCommand extends Command
         $steps['templates'] = ['description' => 'Compile every Twig template', 'run' => function () use ($io, $app) {
             $io->writeln(sprintf(' ✔ %d Twig templates compiled', $this->compileTemplates($app)));
         }];
-        $steps['vite'] = ['description' => 'Cache the Vite manifest', 'run' => static function () use ($io, $app) {
+        $steps['vite'] = ['description' => 'Cache the Vite manifest', 'run' => function () use ($io, $app) {
             if ($app->vite->warmup()) {
                 $io->writeln(' ✔ Vite manifest cached');
-            } else {
-                $io->warning('public/build/.vite/manifest.json is missing: run `npm run build` (or pass --assets).');
+
+                return true;
             }
+            // Every page needs it: without it they all fail ("Vite manifest not found").
+            if (glob($this->root . '/vite.config.{js,mjs,cjs,ts,mts,cts}', GLOB_BRACE) !== []) {
+                $io->error('public/build/.vite/manifest.json is missing, and every page needs it: run `npm run build` first (or deploy --assets).');
+
+                return false;
+            }
+            $io->note('No Vite build (and no vite.config.js): pages are served without built assets.');
+
+            return true;
+        }];
+        $steps['switch'] = ['description' => 'Put the new cache and files in place of the live ones (the previous ones in var/deploy/prev/)', 'run' => function () use ($io, $live, $next) {
+            $io->section('Switching to the new build');
+            $prev = $this->root . self::WORK_DIR . '/prev';
+            self::remove($prev);
+            // The files first: the new pages may show new images, and old pages still have theirs until then.
+            foreach (self::MEDIA as $url) {
+                self::swap($this->root . "/public{$url}", "{$next}/public{$url}", "{$prev}/public{$url}");
+            }
+            if (is_file("{$live}/.gitkeep")) {
+                copy("{$live}/.gitkeep", "{$next}/cache/.gitkeep"); // committed in the skeleton
+            }
+            self::swap($live, "{$next}/cache", "{$prev}/cache");
+            self::remove($next);
+            $io->writeln(' ✔ The site now answers from the new build (the previous one is kept for deploy --rollback)');
         }];
         $steps['opcache'] = ['description' => "Refresh the web server's Opcache ({$opcache})", 'run' => fn () => match ($opcache) {
-            'cachetool' => $this->refreshWithCachetool($input, $app->cacheDir, $io),
+            'cachetool' => $this->refreshWithCachetool($input, $live, $io),
             'reload' => $this->refreshWithReload($reloadCommand, $io),
             default => true, // 'none' (the mode was validated before any step ran)
         }];
@@ -261,7 +309,7 @@ final class DeployCommand extends Command
             if (isset($steps[$name])) {
                 throw new \InvalidArgumentException("Deploy step \"{$name}\" already exists.");
             }
-            $anchor = $custom['before'] ?? $custom['after'] ?? 'opcache';
+            $anchor = $custom['before'] ?? $custom['after'] ?? 'switch';
             if (!isset($steps[$anchor])) {
                 throw new \InvalidArgumentException("Deploy step \"{$name}\" refers to unknown step \"{$anchor}\". Steps: " . implode(', ', array_keys($steps)) . '.');
             }
@@ -284,6 +332,91 @@ final class DeployCommand extends Command
         }
 
         return $steps;
+    }
+
+    /**
+     * `deploy --rollback`: the previous build back in place (and the current one kept as the previous,
+     * so a second rollback undoes the first), then Opcache and the CDN as after a deploy.
+     *
+     * @param array<string, array{description: string, run: \Closure(): mixed}> $steps
+     * @param array<string> $skip
+     */
+    private function rollback(array $steps, array $skip, string $live, SymfonyStyle $io): int
+    {
+        $prev = $this->root . self::WORK_DIR . '/prev';
+        if (!is_dir("{$prev}/cache")) {
+            $io->error('There\'s no previous deploy to go back to (var/deploy/prev/ is empty): deploy keeps one from the second deploy on.');
+
+            return Command::FAILURE;
+        }
+        $io->title('TinyTank deploy --rollback');
+        $current = $this->root . self::WORK_DIR . '/current';
+        self::remove($current);
+        foreach ([...array_map(fn (string $url) => [$this->root . "/public{$url}", "{$prev}/public{$url}", "{$current}/public{$url}"], self::MEDIA), [$live, "{$prev}/cache", "{$current}/cache"]] as [$to, $from, $keep]) {
+            if (is_dir($from)) {
+                self::swap($to, $from, $keep);
+            }
+        }
+        self::remove($prev);
+        rename($current, $prev);
+        $io->writeln(' ✔ The site answers from the previous build again (deploy --rollback again undoes this)');
+
+        foreach (['opcache', 'cdn'] as $name) {
+            if (!in_array($name, $skip, true) && $steps[$name]['run']() === false) {
+                $io->error("Rolled back, but step \"{$name}\" failed.");
+
+                return Command::FAILURE;
+            }
+        }
+        $io->success('Rolled back.');
+
+        return Command::SUCCESS;
+    }
+
+    /**
+     * Moves $next to $live, and what was live to $prev: two renames, so the site is never half-built.
+     * In between, a request may find no cache and start a new one (production builds what's missing):
+     * that's set aside, and the move tried again.
+     */
+    private static function swap(string $live, string $next, string $prev): void
+    {
+        foreach ([dirname($prev), dirname($live)] as $dir) {
+            if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
+                throw new \RuntimeException("Cannot create {$dir}.");
+            }
+        }
+        if (file_exists($live) && !rename($live, $prev)) {
+            throw new \RuntimeException("Cannot move {$live} aside (to {$prev}).");
+        }
+        for ($attempt = 1; !@rename($next, $live); ++$attempt) {
+            if ($attempt === 5 || !file_exists($live)) {
+                throw new \RuntimeException("Cannot move {$next} to {$live}: are they on the same disk? The previous build is in {$prev}.");
+            }
+            $stray = "{$prev}.stray";
+            self::remove($stray);
+            rename($live, $stray);
+            self::remove($stray);
+        }
+    }
+
+    /** Deletes a folder and everything in it (nothing if it doesn't exist). */
+    private static function remove(string $dir): void
+    {
+        if (is_link($dir) || is_file($dir)) {
+            unlink($dir);
+        } elseif (is_dir($dir)) {
+            Cache::clear($dir);
+            @unlink("{$dir}/.gitkeep");
+            rmdir($dir);
+        }
+    }
+
+    /** var/cache, or the site's own `cache_dir` (config/app.php). */
+    private function liveCacheDir(): string
+    {
+        $config = require $this->root . '/config/app.php';
+
+        return is_array($config) && is_string($config['cache_dir'] ?? null) ? $config['cache_dir'] : $this->root . '/var/cache';
     }
 
     /**

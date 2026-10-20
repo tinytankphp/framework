@@ -23,7 +23,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 #[AsCommand('cdn:purge', 'Drops pages from the CDN\'s cache: paths or URLs, or --all.')]
 final class CdnPurgeCommand extends Command
 {
-    /** @param \Closure(?bool): Kernel $boot shared kernel factory from TinyTank\Console\Console */
+    /** @param \Closure(?bool, array<string, mixed>=): Kernel $boot shared kernel factory from TinyTank\Console\Console */
     public function __construct(private readonly \Closure $boot)
     {
         parent::__construct();

@@ -29,8 +29,8 @@ final class Console
         // One kernel per console run, booted on first use. `deploy` boots it first in production mode,
         // so app commands it runs as deploy steps see the same (production) kernel.
         $kernel = null;
-        $boot = static function (?bool $debug = null) use (&$kernel, $root): Kernel {
-            return $kernel ??= Kernel::boot($root, $debug);
+        $boot = static function (?bool $debug = null, array $overrides = []) use (&$kernel, $root): Kernel {
+            return $kernel ??= Kernel::boot($root, $debug, $overrides);
         };
 
         $console = new Application('TinyTank');
