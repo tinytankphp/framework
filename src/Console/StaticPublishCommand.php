@@ -44,7 +44,7 @@ final class StaticPublishCommand extends Command
 
         $missing = array_filter(['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID'], static fn (string $key) => (string) getenv($key) === '');
         if ($missing !== []) {
-            $io->error(implode(' and ', $missing) . ' must be set (in .env): a Cloudflare API token from the "Edit Cloudflare Workers" template, and your account ID. See the docs, Static builds → Publishing.');
+            $io->error(implode(' and ', $missing) . ' must be set (in .env): a Cloudflare API token from the "Edit Cloudflare Workers" template, and your account ID. See the docs, Static Site Generator → Publishing.');
 
             return Command::INVALID;
         }

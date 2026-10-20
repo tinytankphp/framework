@@ -16,7 +16,7 @@ change behaviour, and its notes say what to update in your site.
   reports by page what needs the server (Datastar server actions, forms the host doesn't answer)
   and stops on broken links; a plain Datastar GET of a page of the site is built like a link (the
   file answers it). `site.static` tells templates. Config: `static.out`, `static.base_url`,
-  `static.paths`, `static.host`, `static.name`. See Deploying → Static builds.
+  `static.paths`, `static.host`, `static.name`. See the docs' Static Site Generator section.
 - **Hosts for static builds**, behind `TinyTank\Static\HostAdapter` (where each page goes, and the
   host's own files): `cloudflare`, the default, for Cloudflare Workers with static assets
   (`<path>.html`, served at the PHP site's URLs; `_headers` with one site-wide Content Security
