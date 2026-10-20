@@ -21,14 +21,16 @@ change behaviour, and its notes say what to update in your site.
   host's own files): `cloudflare`, the default, for Cloudflare Workers with static assets
   (`<path>.html`, served at the PHP site's URLs; `_headers` with one site-wide Content Security
   Policy, pages that add a script source getting their own rule; `_redirects`; `wrangler.jsonc` for
-  `npx wrangler deploy`; checked against Cloudflare's limits), and `none` (redirects as HTML pages).
+  `npx wrangler deploy`, on `static.domains` when set; checked against Cloudflare's limits), and
+  `none` (redirects as HTML pages).
 - **`bin/console preview:static`** serves the static build locally, as its host will: Cloudflare's
   local server (`wrangler dev`: headers, redirects, the forms' Worker with emails written to files),
   or PHP's built-in server with `--php` (pages, files, redirects; no Node needed).
 - **A route can stay out of the sitemap**: `sitemap: false` in `$app->get()` / `$app->route()`, for
   a GET page that isn't one on its own (a fragment Datastar loads).
 - **Forms on static sites**: a form with `'static' => ['from' => …]` in `config/forms.php` is
-  answered by the host. On Cloudflare, the build adds a Worker (only for `/forms/<name>`) that
+  answered by the host, sending to `static.to` (default: the form's `to`, which in development is
+  often DDEV's Mailpit). On Cloudflare, the build adds a Worker (only for `/forms/<name>`) that
   checks it like the PHP site (required fields, lengths, email, choices, honeypot, links limit, the
   same messages in the page's language) and emails it through Email Routing's `send_email`
   binding, locked to the form's recipients; the visitor lands on `<page>/sent`. Templates use

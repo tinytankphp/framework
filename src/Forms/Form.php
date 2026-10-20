@@ -19,7 +19,8 @@ namespace TinyTank\Forms;
  *       'subject' => 'Message from {name}',     // translated, with the values as placeholders
  *       'reply_to' => 'email',                  // default: the first email field
  *       'spam' => ['honeypot', 'timing' => 3, 'max_links' => 2, 'rate_limit' => '5/hour'],
- *       'static' => ['from' => 'contact@forms.example.com'], // static builds: sent by the host (see Static)
+ *       'static' => ['from' => 'contact@forms.example.com', 'to' => 'you@example.com'], // static builds:
+ *                                               sent by the host; `to` (optional) overrides the one above
  *   ],
  *
  * Validation messages are UI texts (translations/<code>.php), so they follow the page's language.
@@ -46,7 +47,7 @@ final class Form
     /** @var array<string|int, mixed> spam check name => option (or a list of names) */
     public readonly array $spam;
 
-    /** @var array{from: string}|null how a static build's host sends it; null: not in static builds */
+    /** @var array{from: string, to: list<string>}|null how a static build's host sends it; null: not in static builds */
     public readonly ?array $static;
 
     /** @param array<mixed> $config */
@@ -105,10 +106,16 @@ final class Form
         $this->spam = (array) ($config['spam'] ?? ['honeypot', 'timing' => 3, 'max_links' => 2, 'rate_limit' => '5/hour']);
 
         $static = $config['static'] ?? null;
-        if ($static !== null && (!is_array($static) || array_keys($static) !== ['from'] || filter_var($static['from'], FILTER_VALIDATE_EMAIL) === false)) {
-            throw new \InvalidArgumentException("{$where}: \"static\" is ['from' => 'an address of yours'], the sender when a static site's host sends the form.");
+        if ($static !== null) {
+            $to = is_array($static) && isset($static['to']) ? array_values(array_filter(array_map('trim', explode(',', (string) $static['to'])))) : $this->to;
+            if (!is_array($static) || array_diff(array_keys($static), ['from', 'to']) !== [] || filter_var($static['from'] ?? null, FILTER_VALIDATE_EMAIL) === false
+                || array_filter($to, static fn (string $address) => filter_var($address, FILTER_VALIDATE_EMAIL) === false) !== []) {
+                throw new \InvalidArgumentException("{$where}: \"static\" is ['from' => 'an address of yours', 'to' => 'your inbox'] (to: optional, the form's own by default), the sender and recipient when a static site's host sends the form.");
+            }
+            $this->static = ['from' => (string) $static['from'], 'to' => $to];
+        } else {
+            $this->static = null;
         }
-        $this->static = $static !== null ? ['from' => (string) $static['from']] : null;
     }
 
     /** The spam checks' options: honeypot on, links allowed (null: no limit). */

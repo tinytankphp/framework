@@ -215,14 +215,15 @@ final class Builder
     private function formData(string $name): array
     {
         $form = $this->app->forms->get($name);
-        if ($form->to === []) {
-            throw new \RuntimeException("Form \"{$name}\" has no recipient: set \"to\" in config/forms.php (for a static build, an address the host can send to).");
+        $to = $form->static['to'] ?? [];
+        if ($to === []) {
+            throw new \RuntimeException("Form \"{$name}\" has no recipient: set \"to\" in config/forms.php, or static.to there for the static site.");
         }
 
         return [
             'pages' => [],
             'fields' => $form->fields,
-            'to' => $form->to,
+            'to' => $to,
             'from' => (string) ($form->static['from'] ?? ''),
             'reply_to' => $form->replyTo,
             'honeypot' => $form->honeypot(),

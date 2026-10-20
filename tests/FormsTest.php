@@ -240,6 +240,9 @@ final class FormsTest extends FrameworkTestCase
             [['contact' => ['fields' => ['x' => 'text'], 'spam' => ['captcha']]], 'unknown spam check "captcha"'],
             [['contact' => ['fields' => ['x' => 'text'], 'spam' => ['rate_limit' => 'often']]], 'rate_limit must look like "5/hour"'],
             [['contact' => ['fields' => ['x' => 'text'], 'reply_to' => 'x']], '"reply_to" must name an email field'],
+            [['contact' => ['fields' => ['x' => 'text'], 'static' => ['from' => 'nope']]], '"static" is [\'from\' => \'an address of yours\''],
+            [['contact' => ['fields' => ['x' => 'text'], 'static' => ['from' => 'a@b.test', 'to' => 'x@y.test, oops']]], '"static" is [\'from\''],
+            [['contact' => ['fields' => ['x' => 'text'], 'static' => ['from' => 'a@b.test', 'subject' => 'x']]], '"static" is [\'from\''],
         ] as [$forms, $message]) {
             try {
                 $this->kernel(overrides: ['forms' => $forms]);

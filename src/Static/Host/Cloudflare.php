@@ -11,7 +11,8 @@ use TinyTank\Static\HostAdapter;
  * Cloudflare Workers with static assets (https://developers.cloudflare.com/workers/static-assets/):
  * pages as <path>.html, which Workers serve at the same URL without a trailing slash (/about from
  * about.html, and /about.html or /about/ redirect there), `_headers` and `_redirects`, and
- * `wrangler.jsonc`, so `npx wrangler deploy` in the output publishes it. Forms with a `static`
+ * `wrangler.jsonc`, so `npx wrangler deploy` in the output publishes it (on `static.domains`, the
+ * site's own domains, when set). Forms with a `static`
  * sender get a Worker (`worker.js`, from resources/static/cloudflare-worker.js) that checks them and
  * emails them through the send_email binding, locked to their recipients; it runs only for
  * /forms/<name>, every page stays a plain file. `.assetsignore` keeps those files private.
@@ -65,6 +66,15 @@ final class Cloudflare implements HostAdapter
             'compatibility_date' => self::COMPATIBILITY_DATE,
             'assets' => ['directory' => '.', 'html_handling' => 'auto-trailing-slash', 'not_found_handling' => '404-page'],
         ];
+        // The site's own domains (`static.domains`): Cloudflare points them at the Worker, DNS record and
+        // certificate included. The domain must be managed by Cloudflare.
+        $domains = $build->options['domains'] ?? [];
+        if ($domains !== []) {
+            if (!is_array($domains) || array_filter($domains, static fn ($d) => !is_string($d) || !preg_match('/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i', $d)) !== []) {
+                throw new \RuntimeException('static.domains in config/app.php is a list of host names, like [\'example.com\', \'www.example.com\'] (no https://, no paths).');
+            }
+            $config['routes'] = array_map(static fn (string $domain) => ['pattern' => strtolower($domain), 'custom_domain' => true], array_values($domains));
+        }
         if ($build->forms !== []) {
             // Only with Worker code: an assets-only Worker can't have the binding (wrangler refuses it).
             $config['main'] = 'worker.js';

@@ -71,6 +71,18 @@ final class StaticHostsTest extends TestCase
         self::assertStringContainsString('"name": "my-site"', (new Cloudflare())->files(new Build('/out', 'https://example.com', 'Lab909', ['name' => 'My Site']))['wrangler.jsonc'], 'static.name wins');
     }
 
+    public function testTheSitesDomainsArePublishedThere(): void
+    {
+        $files = (new Cloudflare())->files(new Build('/out', 'https://lab909.dev', 'Lab909', ['domains' => ['lab909.dev', 'WWW.lab909.dev']]));
+        $config = json_decode((string) preg_replace('#^//.*\n#', '', $files['wrangler.jsonc']), true);
+
+        self::assertSame([['pattern' => 'lab909.dev', 'custom_domain' => true], ['pattern' => 'www.lab909.dev', 'custom_domain' => true]], $config['routes'] ?? null);
+        self::assertArrayNotHasKey('routes', json_decode((string) preg_replace('#^//.*\n#', '', (new Cloudflare())->files(new Build('/out', 'https://x.test', 'X'))['wrangler.jsonc']), true), 'none set: the workers.dev address only');
+
+        $this->expectExceptionMessage('static.domains in config/app.php is a list of host names');
+        (new Cloudflare())->files(new Build('/out', 'https://lab909.dev', 'Lab909', ['domains' => ['https://lab909.dev/']]));
+    }
+
     public function testFormsGetAWorkerAndAnEmailBindingLockedToTheirRecipients(): void
     {
         $build = new Build('/out', 'https://example.com', 'Lab909');

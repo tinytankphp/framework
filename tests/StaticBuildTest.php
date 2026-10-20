@@ -97,6 +97,12 @@ final class StaticBuildTest extends FrameworkTestCase
         $form = $build->forms['contact'] ?? [];
         self::assertSame(['/contact' => 'en', '/it/contact' => 'it'], $form['pages'] ?? null);
         self::assertSame([['me@example.com'], 'form@forms.example.com', 'email', true, 1], [$form['to'], $form['from'], $form['reply_to'], $form['honeypot'], $form['max_links']]);
+
+        // The published site's recipient doesn't have to be the development one (DDEV's Mailpit…).
+        $forms = require "{$root}/config/forms.php";
+        $forms['contact']['static']['to'] = 'inbox@example.com';
+        $live = $this->kernel(false, ['url' => 'https://static.test', 'cache_dir' => $this->tempDir('cache2'), 'forms' => $forms], $root);
+        self::assertSame(['inbox@example.com'], (new Builder($live, $this->tempDir('out2')))->run()->forms['contact']['to']);
         self::assertSame('From {email}', $form['subject']['en'] ?? null, 'placeholders kept for the host');
         self::assertSame('Use at least {min} characters.', $form['messages']['en']['min'] ?? null);
         self::assertSame('Campo obbligatorio.', $form['messages']['it']['required'] ?? null, 'in each page\'s language');
