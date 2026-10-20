@@ -37,6 +37,7 @@ final class Console
         $console->setAutoExit(false);
         $console->addCommand(new DeployCommand($root, $boot));
         $console->addCommand(new CacheClearCommand($root));
+        $console->addCommand(new CheckCommand($root));
         $console->addCommand(new CdnPurgeCommand($boot));
         $console->addCommand(new SiteCleanCommand($root));
         $console->addCommand(new StaticBuildCommand($root));

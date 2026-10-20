@@ -34,7 +34,9 @@ final class CacheClearCommand extends Command
         Cache::clear($this->root . '/public' . Blog::ASSET_URL);
         Cache::clear($this->root . '/public' . Pages::ASSET_URL);
         Cache::clear($this->root . '/public' . Collections::ASSET_URL);
-        $output->writeln('<info>var/cache, public' . Blog::ASSET_URL . ', public' . Pages::ASSET_URL . ' and public' . Collections::ASSET_URL . ' cleared.</info>');
+        // deploy's builds (the next, the previous): nothing to roll back to in development.
+        Cache::clear($this->root . DeployCommand::WORK_DIR);
+        $output->writeln('<info>var/cache, var/deploy, public' . Blog::ASSET_URL . ', public' . Pages::ASSET_URL . ' and public' . Collections::ASSET_URL . ' cleared.</info>');
 
         // deploy's authoritative class map only knows the classes that existed then: in development a
         // new controller or command would be "not found". Back to the normal autoloader.

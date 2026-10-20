@@ -67,7 +67,7 @@ final class ConsoleTest extends FrameworkTestCase
         self::assertSame(Command::SUCCESS, $tester->getStatusCode());
         preg_match_all('/^\s{2}(\S+)/m', $tester->getDisplay(), $rows);
         self::assertSame(
-            ['Step', 'composer', 'cache', 'fixture-closure', 'routes', 'blog', 'pages', 'collections', 'embeds', 'translations', 'templates', 'vite', 'fixture-command', 'switch', 'opcache', 'cdn'],
+            ['Step', 'check', 'composer', 'cache', 'fixture-closure', 'routes', 'blog', 'pages', 'collections', 'embeds', 'translations', 'templates', 'vite', 'fixture-command', 'switch', 'opcache', 'cdn'],
             $rows[1],
         );
         self::assertStringContainsString('vite (skipped)', self::text($tester));
@@ -125,6 +125,10 @@ final class ConsoleTest extends FrameworkTestCase
         self::write($root, ['vite.config.js' => 'export default {};']);
         $tester = $this->deploy($root, ['--skip' => 'composer', '--opcache' => 'none']);
         self::assertSame(Command::FAILURE, $tester->getStatusCode());
+        self::assertStringContainsString('No Vite build (public/build/.vite/manifest.json): run `npm run build`', self::text($tester));
+        self::assertStringContainsString('Deploy stopped at step "check"', self::text($tester), 'found before anything is built');
+        // And by its own step, when the check is skipped.
+        $tester = $this->deploy($root, ['--skip' => 'composer,check', '--opcache' => 'none']);
         self::assertStringContainsString('every page needs it: run `npm run build` first', self::text($tester));
         self::assertStringContainsString('Deploy stopped at step "vite"', self::text($tester));
         self::assertFileExists("{$root}/var/cache/routes.matcher.php", 'the site still answers, from the last deploy');
@@ -252,13 +256,14 @@ final class ConsoleTest extends FrameworkTestCase
     public function testCacheClearKeepsGitkeep(): void
     {
         $root = $this->project();
-        self::write($root, ['var/cache/.gitkeep' => '', 'var/cache/x/y.php' => '<?php', 'public/media/blog/a/b.png' => 'x', 'public/media/pages/about/c.png' => 'x']);
+        self::write($root, ['var/cache/.gitkeep' => '', 'var/cache/x/y.php' => '<?php', 'public/media/blog/a/b.png' => 'x', 'public/media/pages/about/c.png' => 'x', 'var/deploy/prev/cache/z.php' => '<?php']);
         $tester = new CommandTester($this->console($root)->find('cache:clear'));
 
         self::assertSame(Command::SUCCESS, $tester->execute([]));
         self::assertSame(['.gitkeep'], array_values(array_diff((array) scandir("{$root}/var/cache"), ['.', '..'])));
         self::assertSame([], array_values(array_diff((array) scandir("{$root}/public/media/blog"), ['.', '..'])));
         self::assertSame([], array_values(array_diff((array) scandir("{$root}/public/media/pages"), ['.', '..'])));
+        self::assertSame([], array_values(array_diff((array) scandir("{$root}/var/deploy"), ['.', '..'])), 'no deploy to roll back to');
     }
 
     public function testSiteCleanAsksListsAndRemovesTheExamples(): void

@@ -29,6 +29,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * `deploy --rollback`.
  *
  *   assets        (only with --assets) npm run build
+ *   check         bin/console check: PHP, images, environment, folders, content, templates, Vite
  *   composer      composer dump-autoload --optimize --classmap-authoritative
  *   cache         start a new cache, in var/deploy/next/cache/
  *   routes        compile the router
@@ -184,6 +185,12 @@ final class DeployCommand extends Command
                 return $this->exec('npm run build', $io);
             }];
         }
+        $steps['check'] = ['description' => 'Check the server and the site (bin/console check)', 'run' => function () use ($output) {
+            // Its own kernel, compiling into a temporary folder: this one's templates are compiled for the new cache.
+            $console = $this->getApplication() ?? throw new \LogicException('deploy must run inside the console application.');
+
+            return $console->find('check')->run(new ArrayInput([]), $output) === Command::SUCCESS;
+        }];
         $steps['composer'] = ['description' => 'Optimize the Composer autoloader (authoritative class map)', 'run' => function () use ($io, $input) {
             $io->section('Optimizing Composer autoloader');
 
@@ -244,7 +251,7 @@ final class DeployCommand extends Command
             $io->writeln(sprintf(' ✔ translations compiled for %d languages', $app->translations->warmup()));
         }];
         $steps['templates'] = ['description' => 'Compile every Twig template', 'run' => function () use ($io, $app) {
-            $io->writeln(sprintf(' ✔ %d Twig templates compiled', $this->compileTemplates($app)));
+            $io->writeln(sprintf(' ✔ %d Twig templates compiled', self::compileTemplates($app, $this->root)));
         }];
         $steps['vite'] = ['description' => 'Cache the Vite manifest', 'run' => function () use ($io, $app) {
             if ($app->vite->warmup()) {
@@ -456,11 +463,11 @@ final class DeployCommand extends Command
     }
 
     /** Compiles every template the site can use: its own, packages' and the framework's (overridden ones once). */
-    private function compileTemplates(Kernel $app): int
+    public static function compileTemplates(Kernel $app, string $root): int
     {
         $loader = $app->twig->getLoader();
         $names = [];
-        foreach ($loader instanceof \Twig\Loader\FilesystemLoader ? $loader->getPaths() : [$this->root . '/templates'] as $dir) {
+        foreach ($loader instanceof \Twig\Loader\FilesystemLoader ? $loader->getPaths() : [$root . '/templates'] as $dir) {
             if (!is_dir($dir)) {
                 continue;
             }
@@ -471,8 +478,16 @@ final class DeployCommand extends Command
                 }
             }
         }
+        // Written into the cache whether or not this process already has the template's class (`check`
+        // compiles the same templates first, for another folder): load() would skip writing them.
+        $cache = $app->twig->getCache(false);
         foreach (array_keys($names) as $name) {
-            $app->twig->load($name);
+            if ($cache instanceof \Twig\Cache\CacheInterface) {
+                $source = $app->twig->compileSource($app->twig->getLoader()->getSourceContext($name));
+                $cache->write($cache->generateKey($name, $app->twig->getTemplateClass($name)), $source);
+            } else {
+                $app->twig->load($name);
+            }
         }
 
         return count($names);
