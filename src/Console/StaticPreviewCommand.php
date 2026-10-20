@@ -25,7 +25,7 @@ final class StaticPreviewCommand extends Command
     protected function configure(): void
     {
         $this->addOption('out', null, InputOption::VALUE_REQUIRED, 'The build\'s folder (default: config/app.php static.out, or "deploy")');
-        $this->addOption('port', null, InputOption::VALUE_REQUIRED, 'Port', '8080');
+        $this->addOption('port', null, InputOption::VALUE_REQUIRED, 'Port (4173: rarely taken, unlike 8080)', '4173');
         $this->addOption('ip', null, InputOption::VALUE_REQUIRED, 'Address to listen on (0.0.0.0: reachable from outside a container, as DDEV needs)', '0.0.0.0');
         $this->addOption('php', null, InputOption::VALUE_NONE, 'PHP\'s built-in server instead of Cloudflare\'s (no Node needed; no headers, no forms)');
         $this->addOption('dry-run', null, InputOption::VALUE_NONE, 'Only print the command');
@@ -47,7 +47,7 @@ final class StaticPreviewCommand extends Command
         $port = (string) $input->getOption('port');
         $ip = (string) $input->getOption('ip');
         if (!preg_match('/^\d{2,5}$/', $port) || filter_var($ip, FILTER_VALIDATE_IP) === false) {
-            $io->error('--port is a number and --ip an address, e.g. --port=8080 --ip=127.0.0.1.');
+            $io->error('--port is a number and --ip an address, e.g. --port=4173 --ip=127.0.0.1.');
 
             return Command::INVALID;
         }

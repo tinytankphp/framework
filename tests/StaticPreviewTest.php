@@ -35,14 +35,14 @@ final class StaticPreviewTest extends FrameworkTestCase
         $tester = $this->tester($root);
 
         $tester->execute(['--dry-run' => true]);
-        self::assertSame("cd '{$root}/deploy' && npx --yes wrangler@4 dev --ip '0.0.0.0' --port '8080'", trim($tester->getDisplay()), 'Cloudflare\'s, reachable from DDEV');
+        self::assertSame("cd '{$root}/deploy' && npx --yes wrangler@4 dev --ip '0.0.0.0' --port '4173'", trim($tester->getDisplay()), 'Cloudflare\'s, reachable from DDEV');
 
         self::write($root, ['node_modules/.bin/wrangler' => '']);
         $tester->execute(['--dry-run' => true, '--port' => '9000', '--ip' => '127.0.0.1']);
         self::assertStringContainsString("'{$root}/node_modules/.bin/wrangler' dev --ip '127.0.0.1' --port '9000'", $tester->getDisplay(), 'the site\'s own wrangler first');
 
         $tester->execute(['--dry-run' => true, '--php' => true]);
-        self::assertStringContainsString(" -S '0.0.0.0:8080' -t '{$root}/deploy' '" . realpath(StaticPreviewCommand::ROUTER) . "'", $tester->getDisplay());
+        self::assertStringContainsString(" -S '0.0.0.0:4173' -t '{$root}/deploy' '" . realpath(StaticPreviewCommand::ROUTER) . "'", $tester->getDisplay());
 
         $tester->execute(['--dry-run' => true, '--port' => 'eighty']);
         self::assertSame(Command::INVALID, $tester->getStatusCode());

@@ -37,7 +37,8 @@ change behaviour, and its notes say what to update in your site.
 
 ### Skeleton
 
-- **The static preview's port in DDEV**: 8080, at `https://<project>.ddev.site:8080`. For an existing
+- **The static preview's port in DDEV**: 4173, at `https://<project>.ddev.site:4173` (8080 is often
+  taken on the host, which stops DDEV's router). For an existing
   site, add the `static` entry under `web_extra_exposed_ports` in `.ddev/config.yaml` and
   `ddev restart`.
 - **The blog search works on static sites**: `/blog/search` (route `blog_search`,
