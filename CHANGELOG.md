@@ -43,7 +43,9 @@ change behaviour, and its notes say what to update in your site.
 - **`bin/console publish:static`** builds the static site and publishes it on Cloudflare
   (`wrangler deploy`) with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` from `.env`, no browser
   login; forms sent over SMTP get the `SMTP_*` keys from `.env` as the Worker's secrets, after the
-  deploy (`wrangler secret bulk`, on its input: never in a file). `--no-build`, `--dry-run`.
+  deploy (`wrangler secret bulk`, on its input: never in a file). `--no-build`, `--dry-run`. It
+  warns about a `$` outside single quotes in those `.env` values (read as a variable, the password
+  arrives changed), and names the API token's permissions when Cloudflare refuses it.
 
 ### Skeleton
 

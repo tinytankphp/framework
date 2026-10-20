@@ -73,6 +73,11 @@ final class StaticPublishTest extends FrameworkTestCase
         self::assertStringContainsString("wrangler@4 deploy\n", $tester->getDisplay());
         self::assertStringContainsString('wrangler@4 secret bulk, with SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD (values not shown)', $tester->getDisplay(), 'after the deploy: a new Worker has no deployments to look up');
         self::assertStringNotContainsString('s3cret', $tester->getDisplay());
+
+        self::write($root, ['.env' => "CLOUDFLARE_API_TOKEN=token\nCLOUDFLARE_ACCOUNT_ID=account\nSMTP_HOST=mail.example.com\nSMTP_USER='a\$b'\nSMTP_PASSWORD=\"s3c\$ret\"\n"]);
+        $tester->execute(['--dry-run' => true]);
+        self::assertStringContainsString("SMTP_PASSWORD in .env has a $ outside single quotes", $tester->getDisplay(), 'it would arrive changed');
+        self::assertStringNotContainsString('SMTP_USER in .env', $tester->getDisplay(), 'single quotes keep it as written');
     }
 
     public function testTheSecretsReachWranglerOnItsInputOnly(): void

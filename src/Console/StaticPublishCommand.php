@@ -73,6 +73,13 @@ final class StaticPublishCommand extends Command
                     $secrets[$key] = (string) getenv($key);
                 }
             }
+            // Dotenv replaces $NAME in unquoted and double-quoted values: a password with a $ arrives changed.
+            $env = is_file($this->root . '/.env') ? (string) file_get_contents($this->root . '/.env') : '';
+            foreach (array_keys($secrets) as $key) {
+                if (preg_match('/^' . $key . '=(?!\')[^\n]*\$/m', $env) === 1) {
+                    $io->warning("{$key} in .env has a \$ outside single quotes, which .env reads as a variable: write it as {$key}='…' so it's used as written.");
+                }
+            }
             if (!isset($secrets['SMTP_HOST'])) {
                 $io->error('A form is sent over SMTP: set SMTP_HOST (and SMTP_PORT, SMTP_USER, SMTP_PASSWORD) in .env.');
 
