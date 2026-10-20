@@ -48,8 +48,22 @@ final class Images
     /** @var list<int> */
     public readonly array $widths;
 
-    /** @var list<string> 'avif' and/or 'webp': what this server can write, best first */
-    public readonly array $formats;
+    /**
+     * 'avif' and/or 'webp': what this server can write, best first; none without GD or Imagick. Found
+     * on first use, so a site boots (and serves plain images) on a server without either.
+     *
+     * @var list<string>
+     */
+    public array $formats {
+        get => $this->supported ??= $this->driverName() === null ? [] : array_values(array_filter($this->wanted, fn (string $format) => in_array($format, ['avif', 'webp'], true)
+            && $this->manager()->driver->supports($format === 'avif' ? Format::AVIF : Format::WEBP)));
+    }
+
+    /** @var list<string>|null */
+    private ?array $supported = null;
+
+    /** @var list<string> the formats config/app.php asks for */
+    private readonly array $wanted;
 
     public readonly string $sizes;
 
@@ -79,9 +93,17 @@ final class Images
         $this->presets = $presets;
         $this->quality = ($config['quality'] ?? []) + ['avif' => 50, 'webp' => 75, 'jpeg' => 90];
 
-        $wanted = $config['formats'] ?? ['avif', 'webp'];
-        $this->formats = array_values(array_filter($wanted, fn (string $format) => in_array($format, ['avif', 'webp'], true)
-            && $this->manager()->driver->supports($format === 'avif' ? Format::AVIF : Format::WEBP)));
+        $this->wanted = $config['formats'] ?? ['avif', 'webp'];
+    }
+
+    /** The image library this server has: 'imagick' (preferred) or 'gd', or null without either. */
+    public function driverName(): ?string
+    {
+        if ($this->driver !== null) {
+            return extension_loaded($this->driver) ? $this->driver : null;
+        }
+
+        return extension_loaded('imagick') ? 'imagick' : (extension_loaded('gd') ? 'gd' : null);
     }
 
     /** Whether a file gets responsive versions (by its extension). */
@@ -278,7 +300,7 @@ final class Images
 
     private function manager(): ImageManager
     {
-        $driver = $this->driver ?? (extension_loaded('imagick') ? 'imagick' : 'gd');
+        $driver = $this->driverName() ?? throw new \RuntimeException('Images need PHP\'s GD or Imagick extension (to remove their metadata and make their smaller versions): install one, e.g. php8.4-gd.');
 
         return $this->manager ??= new ImageManager(
             $driver === 'imagick' ? \Intervention\Image\Drivers\Imagick\Driver::class : \Intervention\Image\Drivers\Gd\Driver::class,

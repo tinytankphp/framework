@@ -130,6 +130,18 @@ final class ImagesTest extends FrameworkTestCase
         self::assertStringStartsWith('<img', $this->images(['formats' => []])->picture($this->photoFile(), '/p.jpg', ''), 'no modern format available');
     }
 
+    public function testWithoutGdOrImagickTheSiteStillServesPlainImages(): void
+    {
+        $images = new Images($this->tempDir('images'), [], 'no_such_extension');
+
+        self::assertNull($images->driverName());
+        self::assertSame([], $images->formats, 'nothing it can write');
+        self::assertStringStartsWith('<img src="/p.jpg"', $images->picture($this->photoFile(), '/p.jpg', ''), 'the page works, with the image as it is');
+
+        $this->expectExceptionMessage('Images need PHP\'s GD or Imagick extension');
+        $images->publish($this->photoFile(), $this->tempDir('out')); // never without removing the metadata
+    }
+
     public function testVariantNames(): void
     {
         self::assertSame('team.jpg.960w.webp', Images::variantName('/media/blog/x/team.jpg', 960, 'webp'));
