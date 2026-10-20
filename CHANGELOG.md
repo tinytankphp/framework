@@ -42,8 +42,8 @@ change behaviour, and its notes say what to update in your site.
   `SMTP_PORT`, `SMTP_USER` and `SMTP_PASSWORD` as its secrets.
 - **`bin/console publish:static`** builds the static site and publishes it on Cloudflare
   (`wrangler deploy`) with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` from `.env`, no browser
-  login; forms sent over SMTP get the `SMTP_*` keys from `.env` as the Worker's secrets, through a
-  temporary file deleted right after. `--no-build`, `--dry-run`.
+  login; forms sent over SMTP get the `SMTP_*` keys from `.env` as the Worker's secrets, after the
+  deploy (`wrangler secret bulk`, on its input: never in a file). `--no-build`, `--dry-run`.
 
 ### Skeleton
 

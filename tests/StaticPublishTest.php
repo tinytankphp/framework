@@ -60,7 +60,7 @@ final class StaticPublishTest extends FrameworkTestCase
         $tester = $this->tester($root);
 
         $tester->execute(['--dry-run' => true]);
-        self::assertSame("cd '{$root}/deploy' && npx --yes wrangler@4 deploy\n without secrets", trim($tester->getDisplay()), 'sent by Cloudflare: no secrets');
+        self::assertSame("cd '{$root}/deploy' && npx --yes wrangler@4 deploy\nNo secrets.", trim($tester->getDisplay()), 'sent by Cloudflare: no secrets');
 
         self::write($root, ['deploy/worker.js' => 'const FORMS = {"contact": {"send": "smtp"}};']);
         $tester->execute(['--dry-run' => true]);
@@ -70,30 +70,27 @@ final class StaticPublishTest extends FrameworkTestCase
         self::write($root, ['.env' => "CLOUDFLARE_API_TOKEN=token\nCLOUDFLARE_ACCOUNT_ID=account\nSMTP_HOST=mail.example.com\nSMTP_PORT=465\nSMTP_USER=me\nSMTP_PASSWORD=s3cret\n"]);
         $tester->execute(['--dry-run' => true]);
         self::assertSame(Command::SUCCESS, $tester->getStatusCode());
-        self::assertStringContainsString("deploy --secrets-file '{$root}/var/static-secrets.env'", $tester->getDisplay());
-        self::assertStringContainsString('with the secrets SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD (values not shown)', $tester->getDisplay());
+        self::assertStringContainsString("wrangler@4 deploy\n", $tester->getDisplay());
+        self::assertStringContainsString('wrangler@4 secret bulk, with SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD (values not shown)', $tester->getDisplay(), 'after the deploy: a new Worker has no deployments to look up');
         self::assertStringNotContainsString('s3cret', $tester->getDisplay());
-        self::assertFileDoesNotExist("{$root}/var/static-secrets.env", 'a dry run writes nothing');
     }
 
-    public function testTheSecretsFileIsWrittenForWranglerAndRemoved(): void
+    public function testTheSecretsReachWranglerOnItsInputOnly(): void
     {
         $root = $this->copyToTemp(self::PROJECT, 'project');
-        // A stand-in for wrangler, which copies the secrets file it was given.
+        // A stand-in for wrangler, which notes its calls and what it reads.
         self::write($root, [
             '.env' => "CLOUDFLARE_API_TOKEN=token\nCLOUDFLARE_ACCOUNT_ID=account\nSMTP_HOST=mail.example.com\nSMTP_PASSWORD='p\"a\\ss'\n",
             'deploy/' . StaticBuildCommand::MARKER => '', 'deploy/wrangler.jsonc' => '{}', 'deploy/worker.js' => '{"send": "smtp"}',
-            'node_modules/.bin/wrangler' => "#!/bin/sh\necho \"$@\" > args.txt\ncp \"$3\" secrets.txt\nstat -c %a \"$3\" > mode.txt\n",
+            'node_modules/.bin/wrangler' => "#!/bin/sh\necho \"$@\" >> calls.txt\nif [ \"$1\" = secret ]; then cat > secrets.txt; fi\n",
         ]);
         chmod("{$root}/node_modules/.bin/wrangler", 0755);
         $tester = $this->tester($root);
 
         $tester->execute(['--no-build' => true]);
         self::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        self::assertSame("deploy --secrets-file {$root}/var/static-secrets.env", trim((string) file_get_contents("{$root}/deploy/args.txt")));
-        self::assertSame("SMTP_HOST=\"mail.example.com\"\nSMTP_PASSWORD=\"p\\\"a\\\\ss\"\n", file_get_contents("{$root}/deploy/secrets.txt"), 'only the SMTP keys, quoted');
-        self::assertSame('600', trim((string) file_get_contents("{$root}/deploy/mode.txt")), 'readable by its owner only');
-        self::assertFileDoesNotExist("{$root}/var/static-secrets.env", 'removed right after');
+        self::assertSame("deploy\nsecret bulk\n", file_get_contents("{$root}/deploy/calls.txt"), 'the deploy first, then the secrets');
+        self::assertSame(['SMTP_HOST' => 'mail.example.com', 'SMTP_PASSWORD' => 'p"a\\ss'], json_decode((string) file_get_contents("{$root}/deploy/secrets.txt"), true), 'only the SMTP keys');
         self::assertStringNotContainsString('p"a', $tester->getDisplay());
     }
 }

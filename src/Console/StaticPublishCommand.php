@@ -17,7 +17,7 @@ use TinyTank\Kernel;
  * Builds the static site and publishes it on Cloudflare Workers, without a browser login: wrangler
  * reads CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID from the environment (.env). Forms sent over
  * SMTP get their server's settings as the Worker's encrypted secrets, from .env too: only the SMTP_*
- * keys, through a temporary file deleted right after, never written in the build.
+ * keys, handed to wrangler on its standard input (never in a file, nor in the build).
  */
 #[AsCommand('publish:static', 'Builds the static site and publishes it on Cloudflare (CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID in .env).')]
 final class StaticPublishCommand extends Command
@@ -80,45 +80,38 @@ final class StaticPublishCommand extends Command
             }
         }
 
-        $file = $this->root . '/var/static-secrets.env';
-        $command = 'cd ' . escapeshellarg($dir) . ' && ' . StaticPreviewCommand::wrangler($this->root) . ' deploy' . ($secrets !== [] ? ' --secrets-file ' . escapeshellarg($file) : '');
+        // The secrets after the deploy, on wrangler's input (`deploy --secrets-file` would need them in a file).
+        $cd = 'cd ' . escapeshellarg($dir) . ' && ' . StaticPreviewCommand::wrangler($this->root);
         if ($dry) {
-            $io->writeln($command);
-            $io->writeln($secrets !== [] ? ' with the secrets ' . implode(', ', array_keys($secrets)) . ' (values not shown)' : ' without secrets');
+            $io->writeln($cd . ' deploy');
+            $io->writeln($secrets !== [] ? $cd . ' secret bulk, with ' . implode(', ', array_keys($secrets)) . ' (values not shown)' : 'No secrets.');
 
             return Command::SUCCESS;
         }
 
         $io->section('Publishing on Cloudflare');
-        try {
-            if ($secrets !== []) {
-                if (!is_dir(dirname($file))) {
-                    mkdir(dirname($file), 0775, true);
-                }
-                touch($file);
-                chmod($file, 0600);
-                file_put_contents($file, implode('', array_map(static fn (string $key, string $value) => $key . '=' . self::quote($value) . "\n", array_keys($secrets), $secrets)));
-                $io->writeln(' Secrets for the forms: ' . implode(', ', array_keys($secrets)) . '.');
-            }
-            passthru($command, $code);
-        } finally {
-            if (is_file($file)) {
-                unlink($file);
-            }
-        }
+        passthru($cd . ' deploy', $code);
         if ($code !== 0) {
-            $io->error('wrangler deploy failed (its message is above).');
+            $io->error('wrangler deploy failed (its message is above). "No access to the specified resource" or "Authentication error": the API token lacks a permission; make it from the "Edit Cloudflare Workers" template.');
 
             return Command::FAILURE;
+        }
+        if ($secrets !== []) {
+            $io->writeln(' Secrets for the forms: ' . implode(', ', array_keys($secrets)) . '.');
+            $process = proc_open($cd . ' secret bulk', [0 => ['pipe', 'r'], 1 => STDOUT, 2 => STDERR], $pipes);
+            if (!is_resource($process)) {
+                throw new \RuntimeException('Could not run wrangler.');
+            }
+            fwrite($pipes[0], json_encode($secrets, JSON_THROW_ON_ERROR));
+            fclose($pipes[0]);
+            if (proc_close($process) !== 0) {
+                $io->error('The site is published, but its forms\' secrets were refused (wrangler\'s message is above): run publish:static --no-build again.');
+
+                return Command::FAILURE;
+            }
         }
         $io->success('Published.');
 
         return Command::SUCCESS;
-    }
-
-    /** A value for an .env file, whatever it contains. */
-    public static function quote(string $value): string
-    {
-        return '"' . str_replace(['\\', '"', "\n", "\r"], ['\\\\', '\\"', '\\n', ''], $value) . '"';
     }
 }
