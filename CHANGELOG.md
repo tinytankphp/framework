@@ -7,6 +7,40 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+### Added
+
+- **`bin/console check`**: a read-only preflight (compiled into a temporary folder): PHP and its
+  extensions, GD or Imagick, `APP_SECRET` and `APP_URL`, writable folders, content, every template
+  (and each page's template and form), pages hidden by routes, the Vite build and the entry points
+  templates name. `--json` for CI. `deploy` runs it first, as its `check` step.
+- **`deploy --rollback`** puts the previous build back (its cache and published files), then
+  refreshes Opcache and purges the CDN; a second rollback undoes the first.
+- **`Kernel::serve($root)`** for `public/index.php`: a site that can't start (a mistake in `config/`,
+  a missing extension) shows a plain 500 page and logs why in PHP's log, instead of PHP's own error;
+  with `APP_DEBUG=1` the error shows as before.
+- `state_dir` (default `var/state/`): what the site keeps across deploys.
+
+### Changed
+
+- **`deploy` builds first and switches last**: the new cache and the published files are built in
+  `var/deploy/next/` while the site keeps answering from the current ones, and the new `switch` step
+  moves them in only when every step before it succeeded. A failing step leaves the live site as it
+  was; the build it replaced is kept in `var/deploy/prev/`. During a deploy, `$app->cacheDir` is the
+  new cache's folder, and app steps run before `switch` by default (they ran before `opcache`).
+- **A missing Vite manifest stops the deploy** (every page needs it), unless the site has no
+  `vite.config.js`. It was a warning.
+- **The forms' rate limits are in `var/state/forms/`**, kept across deploys (every deploy reset them
+  from `var/cache/`).
+- **Images load their library on first use**: a server without GD or Imagick boots and serves images
+  as they are; publishing them still needs one (their metadata must go).
+- `cache:clear` also empties `var/deploy/`.
+
+### Skeleton
+
+- `public/index.php` calls `TinyTank\Kernel::serve(dirname(__DIR__))`. For an existing site, replace
+  its last line (`Kernel::boot(…)->run()`) with that.
+- `.gitignore`: `/var/state/` and `/var/deploy/`. For an existing site, add both.
+
 ## [0.1.7] - 2026-10-20
 
 TinyTank as a static site generator: `build:static` writes the whole site as plain files,
