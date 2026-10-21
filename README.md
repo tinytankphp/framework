@@ -15,6 +15,14 @@ all compiled ahead of time for Opcache. Freely inspired by [Craft CMS](https://c
 
 📖 **Documentation:** https://docs.tinytank.dev/
 
+## Status: beta (0.x)
+
+TinyTank runs real sites, but it's young: few sites run on it so far, and its API may still change
+between minor versions (each release's notes in [CHANGELOG.md](CHANGELOG.md) say what to update).
+Review it as you would any dependency before relying on it, and keep it updated: security fixes go
+into the latest release only ([SECURITY.md](SECURITY.md)). Provided as is, without warranty, under
+the [MIT license](LICENSE).
+
 ## Installation
 
 Sites install it from [Packagist](https://packagist.org/packages/tinytank/framework):
