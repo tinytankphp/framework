@@ -24,6 +24,10 @@ jobs:
       - name: Install dependencies
         run: composer update --no-interaction --no-progress --prefer-dist
 
+      # Fails on a dependency with a known vulnerability (GitHub's and FriendsOfPHP's advisories).
+      - name: Dependency audit
+        run: composer audit --no-interaction
+
       - name: Tests
         run: vendor/bin/phpunit
 
