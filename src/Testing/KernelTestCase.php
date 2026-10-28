@@ -82,7 +82,9 @@ abstract class KernelTestCase extends TestCase
     {
         $server = [];
         foreach ($headers as $name => $value) {
-            $server['HTTP_' . strtoupper(str_replace('-', '_', $name))] = $value;
+            $key = strtoupper(str_replace('-', '_', $name));
+            // As web servers pass them: Content-Type and Content-Length without the HTTP_ prefix.
+            $server[in_array($key, ['CONTENT_TYPE', 'CONTENT_LENGTH'], true) ? $key : 'HTTP_' . $key] = $value;
         }
 
         return $app->handle(Request::create($uri, $method, $parameters, [], [], $server, $body));

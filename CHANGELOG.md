@@ -15,12 +15,22 @@ change behaviour, and its notes say what to update in your site.
   the site with a message; `bin/console check` (so `deploy`) reports an old path that still has a
   page and a target that doesn't answer; static builds write the map into the host's redirects.
   `$app->redirects`.
+- **Signals read with their type**: `signal('q')`, `signal_int('page', 1, min: 1, max: 1000)`,
+  `signal_bool()`, `signal_enum('sort', […])` in Twig, `$app->signals()` (and `$this->signals()` in
+  controllers) with `string()`, `int()`, `bool()`, `enum()`, `has()`, `all()` in PHP. Whatever a
+  browser sends, they return the type asked for, or the default. The `signals` variable is unchanged.
+- **`TinyTank\HttpError`**: `throw new HttpError(403, 'Not allowed.')` from a handler answers with
+  that status's error page.
+- `KernelTestCase::request()` passes `Content-Type` and `Content-Length` as web servers do, so a
+  test can send JSON (`['Content-Type' => 'application/json']`).
 - **`$app->noStore()`**: the current response is for one visitor (an account page, a basket):
   `Cache-Control: no-store, private` and no ETag, never kept by a browser or a CDN. Pages with a
   form already did this by themselves.
 
 ### Changed
 
+- **Bad Datastar requests answer 400** (signals that aren't a JSON object) **or 413** (more than
+  64 KB), instead of rendering with no signals.
 - **A response that sets a cookie is never public**: it gets `no-store, private` and no ETag,
   whatever its handler or the CDN settings say (TinyTank has no sessions, so a cookie means the
   response is for that visitor). Responses without cookies are cached as before.
@@ -28,6 +38,9 @@ change behaviour, and its notes say what to update in your site.
 ### Skeleton
 
 - `config/redirects.php`, empty, with examples. Optional: a site without it has no redirects.
+- The blog search and the Datastar demo read their signals with `signal()` and `signal_int()`, so a
+  request with odd values gets an empty search instead of an error. For an existing site, the same
+  change in `templates/_partials/blog-results.twig`, `blog-more.twig` and `search.twig`.
 
 ## [0.1.8] - 2026-10-21
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace TinyTank\Tests;
 
 use TinyTank\Kernel;
+use TinyTank\Signals;
 
 final class DatastarTest extends FrameworkTestCase
 {
@@ -25,9 +26,53 @@ final class DatastarTest extends FrameworkTestCase
     public function testSignalsArriveInTheBodyForPostRequests(): void
     {
         $app = $this->kernel();
-        $response = $this->request($app, self::templateUrl($app, 'post'), 'POST', ['Sec-Fetch-Site' => 'same-origin'], '{"mood":"calm"}');
+        $response = $this->request($app, self::templateUrl($app, 'post'), 'POST', ['Sec-Fetch-Site' => 'same-origin', 'Content-Type' => 'application/json'], '{"mood":"calm"}');
 
         self::assertStringContainsString('Hello Ada, calm', self::body($response));
+    }
+
+    public function testBadSignalsAre400AndOversizedOnes413(): void
+    {
+        $app = $this->kernel(false);
+        $json = ['Sec-Fetch-Site' => 'same-origin', 'Content-Type' => 'application/json'];
+
+        self::assertSame(400, $this->request($app, self::templateUrl($app, 'post'), 'POST', $json, '{"mood":')->getStatusCode(), 'not JSON');
+        self::assertSame(400, $this->request($app, self::templateUrl($app, 'post'), 'POST', $json, '["calm"]')->getStatusCode(), 'not an object');
+        self::assertSame(413, $this->request($app, self::templateUrl($app, 'post'), 'POST', $json, '{"mood":"' . str_repeat('a', Signals::MAX_BYTES) . '"}')->getStatusCode());
+        self::assertSame(200, $this->request($app, self::templateUrl($app, 'post'), 'POST', ['Sec-Fetch-Site' => 'same-origin', 'Content-Type' => 'application/x-www-form-urlencoded'], 'mood=calm')->getStatusCode(), 'a form Datastar posts has no signals: not an error');
+        self::assertSame(400, $this->request($app, self::templateUrl($app, 'get') . '&datastar=%7Bnope')->getStatusCode(), 'GET: in the query');
+    }
+
+    public function testSignalsAreReadWithTheirType(): void
+    {
+        $signals = new Signals(['q' => 'calm  ', 'n' => 42, 'page' => '7', 'big' => 5000, 'f' => 2.0, 'half' => 2.5, 'list' => ['a'], 'open' => 'true', 'sort' => 'old', 'form' => ['email' => 'ada@example.test']]);
+
+        self::assertSame('calm  ', $signals->string('q'));
+        self::assertSame('ca', $signals->string('q', max: 2), 'cut to its length');
+        self::assertSame('42', $signals->string('n'), 'a number as text');
+        self::assertSame('', $signals->string('list'), 'an array is not text: the default');
+        self::assertSame('none', $signals->string('missing', 'none'));
+        self::assertSame(7, $signals->int('page', 1));
+        self::assertSame(1000, $signals->int('big', 1, min: 1, max: 1000), 'kept within its bounds');
+        self::assertSame(1, $signals->int('page', 1, min: 1, max: 1));
+        self::assertSame(2, $signals->int('f'));
+        self::assertSame(9, $signals->int('half', 9), 'not a whole number');
+        self::assertSame(9, $signals->int('q', 9));
+        self::assertTrue($signals->bool('open'));
+        self::assertFalse($signals->bool('q'), 'not a yes or no: the default');
+        self::assertSame('old', $signals->enum('sort', ['new', 'old']));
+        self::assertSame('new', $signals->enum('q', ['new', 'old']), 'not a choice: the first');
+        self::assertSame('ada@example.test', $signals->string('form.email'), 'inside an object');
+        self::assertTrue($signals->has('form.email'));
+        self::assertFalse($signals->has('form.name'));
+    }
+
+    public function testTemplatesReadThemToo(): void
+    {
+        $app = $this->kernel(false);
+        $app->get('/t', static fn () => $app->twig->createTemplate("{{ signal('q') }}|{{ signal_int('page', 1, max: 3) }}|{{ signal_bool('open') ? 'yes' : 'no' }}|{{ signal_enum('sort', ['new', 'old']) }}")->render());
+
+        self::assertSame('calm|3|yes|new', self::body($this->request($app, '/t?datastar=' . rawurlencode('{"q":"calm","page":9,"open":true,"sort":"<script>"}'))));
     }
 
     public function testTheSignedMethodIsTheOnlyOneAccepted(): void

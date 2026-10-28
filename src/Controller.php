@@ -25,6 +25,12 @@ abstract class Controller
         return $this->app->request();
     }
 
+    /** The request's Datastar signals, read with their type: `$this->signals()->string('q')` (see Signals). */
+    protected function signals(): Signals
+    {
+        return $this->app->signals();
+    }
+
     /** @param array<string, mixed> $vars */
     protected function render(string $template, array $vars = []): string
     {

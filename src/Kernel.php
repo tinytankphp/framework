@@ -16,7 +16,6 @@ use TinyTank\Images\Images;
 use TinyTank\Log\Log;
 use TinyTank\Pages\Pages;
 use TinyTank\Seo\Seo;
-use starfederation\datastar\Consts;
 use Symfony\Component\Dotenv\Dotenv;
 use Symfony\Component\ErrorHandler\Debug;
 use Symfony\Component\ErrorHandler\ErrorHandler;
@@ -86,6 +85,9 @@ final class Kernel
 
     /** @var array<string, list<string>> CSP sources added for the current response only (csp_allow()) */
     private array $responseCsp = [];
+
+    /** The current request's Datastar signals, read on first use (signals()). */
+    private ?Signals $signals = null;
 
     /** The current response must not be kept anywhere (noStore(): a form's timing token, a visitor's data). */
     private bool $noStore = false;
@@ -346,6 +348,11 @@ final class Kernel
             $this->site->name(),
             $this->logger,
         );
+        // Datastar's signals, with their type: `{{ signal_int('page', 1, min: 1, max: 1000) }}` (see Signals).
+        $this->twig->addFunction(new TwigFunction('signal', fn (string $name, string $default = '', int $max = 1000): string => $this->signals()->string($name, $default, $max)));
+        $this->twig->addFunction(new TwigFunction('signal_int', fn (string $name, int $default = 0, ?int $min = null, ?int $max = null): int => $this->signals()->int($name, $default, $min, $max)));
+        $this->twig->addFunction(new TwigFunction('signal_bool', fn (string $name, bool $default = false): bool => $this->signals()->bool($name, $default)));
+        $this->twig->addFunction(new TwigFunction('signal_enum', fn (string $name, array $choices, ?string $default = null): string => $this->signals()->enum($name, array_values(array_map('strval', $choices)) ?: throw new \InvalidArgumentException('signal_enum() needs at least one choice.'), $default)));
         // In a static build, only what works without this server: see Forms::staticMarkup().
         $this->twig->addFunction(new TwigFunction('form_spam', fn (string $form): string => $this->site->isStatic() && $this->forms->get($form)->static !== null
             ? $this->forms->staticMarkup($form, $this->request()->getPathInfo())
@@ -684,6 +691,7 @@ final class Kernel
         // tests, worker servers). Alerts go out at the end of the process, after the page is sent.
         $this->logger->reset();
         $this->requests->push($request);
+        $this->signals = null;
         $this->responseCsp = [];
         $this->noStore = false;
         $this->cdn->reset();
@@ -691,6 +699,9 @@ final class Kernel
         $this->seo->reset($this->site->localize($path)); // canonical: /it and /it/ are the same page
         try {
             $response = $this->dispatch($request, $path);
+        } catch (HttpError $e) {
+            // The request's fault (bad signals, a handler's 403…): its status, in debug mode too.
+            $response = $this->error($e->status, $this->t($e->getMessage()));
         } catch (\Throwable $e) {
             if ($this->debug) {
                 throw $e;
@@ -869,7 +880,7 @@ final class Kernel
      */
     public function stream(string $template, array $vars = []): StreamedResponse
     {
-        $vars['signals'] = $this->signals();
+        $vars['signals'] = $this->signals()->all();
 
         return $this->datastar->response($this->twig->render($template, $vars));
     }
@@ -897,19 +908,12 @@ final class Kernel
     }
 
     /**
-     * Signals sent by Datastar: in the `datastar` query parameter for GET/DELETE, else in the JSON body.
-     *
-     * @return array<string, mixed>
+     * The signals the current Datastar request sent, read with their type:
+     * `$app->signals()->int('page', 1, min: 1)`. A malformed body answers 400, an oversized one 413.
      */
-    private function signals(): array
+    public function signals(): Signals
     {
-        $request = $this->request();
-        $json = in_array($request->getMethod(), ['GET', 'DELETE'], true)
-            ? $request->query->getString(Consts::DATASTAR_KEY)
-            : $request->getContent();
-        $signals = $json !== '' ? json_decode($json, true) : [];
-
-        return is_array($signals) ? $signals : [];
+        return $this->signals ??= Signals::fromRequest($this->request());
     }
 
     private function renderDatastarTemplate(): Response
