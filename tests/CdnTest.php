@@ -13,6 +13,7 @@ use TinyTank\Console\CdnPurgeCommand;
 use TinyTank\Kernel;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Response;
 
 final class CdnTest extends FrameworkTestCase
@@ -79,6 +80,35 @@ final class CdnTest extends FrameworkTestCase
         self::assertStringNotContainsString('s-maxage', (string) $this->request($app, '/nope')->headers->get('Cache-Control'), 'errors');
         self::assertStringNotContainsString('s-maxage', (string) $this->request($app, '/boom')->headers->get('Cache-Control'));
         self::assertSame('no-store, private', $this->request($app, '/contact')->headers->get('Cache-Control'), 'pages with a form');
+    }
+
+    public function testWhatIsForOneVisitorIsNeverStoredWhateverItsHandlerSaid(): void
+    {
+        $app = $this->cdn();
+        $app->get('/hello', static function () {
+            $response = (new Response('Hello Ada'))->setPublic()->setMaxAge(3600);
+            $response->headers->setCookie(Cookie::create('seen', '1'));
+
+            return $response;
+        });
+        $app->get('/mine', static function () use ($app) {
+            $app->noStore();
+
+            return 'Your basket';
+        });
+        $app->post('/vote', static function () {
+            $response = new Response('Thanks');
+            $response->headers->setCookie(Cookie::create('voted', '1'));
+
+            return $response;
+        }, 'vote');
+
+        foreach (['/hello' => 'GET', '/mine' => 'GET', '/vote' => 'POST'] as $path => $method) {
+            $response = $this->request($app, $path, $method, ['Sec-Fetch-Site' => 'same-origin']);
+            self::assertSame('no-store, private', $response->headers->get('Cache-Control'), "{$method} {$path}: never public, CDN on or not");
+            self::assertNull($response->getEtag(), "{$path}: nothing to revalidate");
+        }
+        self::assertSame(sprintf(self::CACHED, 300), $this->request($app, '/about')->headers->get('Cache-Control'), 'the next request starts over');
     }
 
     public function testAHandlersOwnCacheControlWins(): void

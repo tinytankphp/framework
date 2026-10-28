@@ -84,7 +84,7 @@ final class Kernel
     /** @var array<string, list<string>> CSP sources added for the current response only (csp_allow()) */
     private array $responseCsp = [];
 
-    /** The current response must not be cached (it shows a form's one-time token). */
+    /** The current response must not be kept anywhere (noStore(): a form's timing token, a visitor's data). */
     private bool $noStore = false;
 
     private readonly RequestStack $requests;
@@ -411,7 +411,19 @@ final class Kernel
     }
 
     /** Whether rendering this response printed a form's one-time token (see Forms). */
-    private function renderedAForm(): bool
+    /**
+     * The current response must not be kept anywhere, by the browser or a CDN: `no-store, private`.
+     * For a response that shows one visitor's data. Pages with a form do it by themselves (the timing
+     * token makes each view different); so does a response that sets a cookie. For "not at the CDN,
+     * but browsers may revalidate it", use $app->cdn->skip().
+     */
+    public function noStore(): void
+    {
+        $this->noStore = true;
+    }
+
+    /** Read through a method: handlers set it (noStore()) during dispatch(), unseen by static analysis. */
+    private function storesNothing(): bool
     {
         return $this->noStore;
     }
@@ -681,13 +693,15 @@ final class Kernel
             $response->headers->set($this->csp->headerName(), $this->responsePolicy()->header($this->vite->devServer()));
         }
 
-        // Pages are the same for every visitor (no sessions), so caches may store them
-        // and revalidate cheaply: an unchanged page is answered with an empty 304.
+        // Pages are the same for every visitor (no sessions), so caches may store them, and a browser
+        // that already has an unchanged page gets an empty 304 instead.
         // Streamed and file responses have no body in memory (getContent() is false): SSE is never
         // cached, and files bring their own ETag and Last-Modified.
-        if ($this->renderedAForm()) {
-            // A form's one-time token is on this page: never stored, by the browser or a CDN.
+        if ($this->storesNothing() || $response->headers->getCookies() !== []) {
+            // For one visitor: a form's timing token, a cookie (whatever its handler said), noStore().
+            // Never stored, by the browser or a CDN, and no ETag to compare.
             $response->headers->set('Cache-Control', 'no-store, private');
+            $response->setEtag(null);
         } elseif ($request->isMethodCacheable() && $response->isOk()) {
             if ($response->getContent() !== false) {
                 $response->setEtag(hash('xxh128', $response->getContent()));

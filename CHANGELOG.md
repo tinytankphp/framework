@@ -7,6 +7,18 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+### Added
+
+- **`$app->noStore()`**: the current response is for one visitor (an account page, a basket):
+  `Cache-Control: no-store, private` and no ETag, never kept by a browser or a CDN. Pages with a
+  form already did this by themselves.
+
+### Changed
+
+- **A response that sets a cookie is never public**: it gets `no-store, private` and no ETag,
+  whatever its handler or the CDN settings say (TinyTank has no sessions, so a cookie means the
+  response is for that visitor). Responses without cookies are cached as before.
+
 ## [0.1.8] - 2026-10-21
 
 Deploy safety. `deploy` now checks the site first (`bin/console check`), builds aside and switches
