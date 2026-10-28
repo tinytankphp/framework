@@ -19,7 +19,7 @@ use TinyTank\Kernel;
  * SMTP get their server's settings as the Worker's encrypted secrets, from .env too: only the SMTP_*
  * keys, handed to wrangler on its standard input (never in a file, nor in the build).
  */
-#[AsCommand('publish:static', 'Builds the static site and publishes it on Cloudflare (CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID in .env).')]
+#[AsCommand('publish:static', 'Builds the static site and publishes it on Cloudflare (CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID in .env).', aliases: ['static:publish'])]
 final class StaticPublishCommand extends Command
 {
     /** The Worker's secrets for forms sent over SMTP; SMTP_HOST is required. */

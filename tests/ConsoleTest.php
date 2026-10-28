@@ -47,6 +47,9 @@ final class ConsoleTest extends FrameworkTestCase
         self::assertTrue($console->has('fixture:greet'));
         self::assertTrue($console->has('fixture:plain'));
         self::assertTrue($console->has('deploy'));
+        foreach (['build', 'preview', 'publish'] as $action) {
+            self::assertSame($console->find("{$action}:static"), $console->find("static:{$action}"), "static:{$action} is the same command");
+        }
         self::assertTrue($console->has('cache:clear'));
     }
 

@@ -12,7 +12,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use TinyTank\Kernel;
 
-#[AsCommand('preview:static', 'Serves the static build locally, as its host will (run build:static first).')]
+#[AsCommand('preview:static', 'Serves the static build locally, as its host will (run build:static first).', aliases: ['static:preview'])]
 final class StaticPreviewCommand extends Command
 {
     public const ROUTER = __DIR__ . '/../../resources/static/preview-router.php';

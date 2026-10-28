@@ -23,6 +23,9 @@ change behaviour, and its notes say what to update in your site.
   that status's error page.
 - `KernelTestCase::request()` passes `Content-Type` and `Content-Length` as web servers do, so a
   test can send JSON (`['Content-Type' => 'application/json']`).
+- **`static:build`, `static:preview` and `static:publish`**: aliases of `build:static`,
+  `preview:static` and `publish:static`, so the three group together in `bin/console list`, like
+  `cache:clear` and `site:clean`.
 - **`$app->noStore()`**: the current response is for one visitor (an account page, a basket):
   `Cache-Control: no-store, private` and no ETag, never kept by a browser or a CDN. Pages with a
   form already did this by themselves.

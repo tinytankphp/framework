@@ -17,7 +17,7 @@ use TinyTank\Static\Host\Cloudflare;
 use TinyTank\Static\Host\NoHost;
 use TinyTank\Static\HostAdapter;
 
-#[AsCommand('build:static', 'Renders the whole site into a folder of plain files, for a static host.')]
+#[AsCommand('build:static', 'Renders the whole site into a folder of plain files, for a static host.', aliases: ['static:build'])]
 final class StaticBuildCommand extends Command
 {
     /** The output marks itself, so a later build only ever empties a folder it wrote. */
