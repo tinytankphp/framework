@@ -60,6 +60,15 @@ final class Builder
         $build->files += $this->app->collections->publishAssets($this->out);
 
         $queue = [];
+        // The redirect map, as the host's redirects; where they go is built like any linked page.
+        foreach ($this->app->redirects->map as $from => $redirect) {
+            $build->redirects[$from] = $redirect;
+            $to = $this->internal($redirect['to']);
+            if ($to !== null) {
+                $queue[$to] = true;
+                $this->foundOn[$to] ??= "config/redirects.php ({$from})";
+            }
+        }
         foreach ([...self::START, $this->app->path('blog_feed'), ...$this->paths] as $path) {
             $queue[$path] = true;
             $this->foundOn[$path] ??= 'the start';

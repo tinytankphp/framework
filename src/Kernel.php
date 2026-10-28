@@ -67,6 +67,9 @@ final class Kernel
 
     public readonly string $cacheDir;
 
+    /** Old paths and where they went (config/redirects.php), answered before anything else. */
+    public readonly Redirects $redirects;
+
     /**
      * What the site keeps between requests and across deploys (the forms' rate limits): var/state/.
      * Never inside var/cache, which every deploy rebuilds.
@@ -149,6 +152,7 @@ final class Kernel
             $config['theme']['default'] ?? 'system',
             self::globals($config, $root),
             $config['state_dir'] ?? null,
+            $config['redirects'] ?? (is_file($root . '/config/redirects.php') ? require $root . '/config/redirects.php' : []),
         );
 
         // The app's extension point: services, Twig extensions and globals, deploy steps.
@@ -208,6 +212,7 @@ final class Kernel
      * @param array<string, mixed> $globals  the site's own values for every template, as `globals`
      *                                       (config/globals.php). Public: never put secrets there
      * @param string|null          $stateDir what's kept across deploys (form rate limits); var/state/ by default
+     * @param array<mixed>         $redirects old path => new path (config/redirects.php, see Redirects)
      */
     public function __construct(
         public readonly string $root,
@@ -229,6 +234,7 @@ final class Kernel
         string $themeDefault = 'system',
         public readonly array $globals = [],
         ?string $stateDir = null,
+        array $redirects = [],
     ) {
         $mediaUrl = rtrim($mediaUrl, '/');
         if ($mediaUrl !== '' && !preg_match('#^https://[^/\s?\#]+(/[^\s?\#]*)?$#', $mediaUrl)) {
@@ -236,6 +242,7 @@ final class Kernel
         }
         $this->cacheDir = $cacheDir ?? $root . '/var/cache';
         $this->stateDir = $stateDir ?? $root . '/var/state';
+        $this->redirects = new Redirects($redirects);
         $contentDir ??= $root . '/content';
         $this->site = $site ?? new Site('http://localhost', 'TinyTank');
         $this->container = new Container($this);
@@ -652,6 +659,18 @@ final class Kernel
 
     public function handle(Request $request): Response
     {
+        // A page that moved (config/redirects.php): its old address, in any language, before anything else.
+        if (($moved = $this->redirects->find($request->getPathInfo())) !== null) {
+            $query = $request->getQueryString();
+            $parts = explode('#', $moved['to'], 2);
+            [$to, $anchor] = [$parts[0], $parts[1] ?? null];
+            if ($query !== null) {
+                $to .= (str_contains($to, '?') ? '&' : '?') . $query;
+            }
+
+            return new RedirectResponse($to . ($anchor !== null ? "#{$anchor}" : ''), $moved['status']);
+        }
+
         // /it/blog → Italian, routed as /blog. The default language never has a prefix: /en/blog → /blog.
         [$language, $path, $redirect] = $this->site->resolve($request->getPathInfo());
         if ($redirect) {

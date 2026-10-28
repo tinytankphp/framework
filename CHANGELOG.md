@@ -9,6 +9,12 @@ change behaviour, and its notes say what to update in your site.
 
 ### Added
 
+- **A redirect map**: `config/redirects.php` (optional), old path => new path or
+  `['to' => …, 'status' => 302]`, to this site or another. Answered first, before languages and
+  routes, keeping the query string. Mistakes (a path without `/`, a chain, an unknown status) stop
+  the site with a message; `bin/console check` (so `deploy`) reports an old path that still has a
+  page and a target that doesn't answer; static builds write the map into the host's redirects.
+  `$app->redirects`.
 - **`$app->noStore()`**: the current response is for one visitor (an account page, a basket):
   `Cache-Control: no-store, private` and no ETag, never kept by a browser or a CDN. Pages with a
   form already did this by themselves.
@@ -18,6 +24,10 @@ change behaviour, and its notes say what to update in your site.
 - **A response that sets a cookie is never public**: it gets `no-store, private` and no ETag,
   whatever its handler or the CDN settings say (TinyTank has no sessions, so a cookie means the
   response is for that visitor). Responses without cookies are cached as before.
+
+### Skeleton
+
+- `config/redirects.php`, empty, with examples. Optional: a site without it has no redirects.
 
 ## [0.1.8] - 2026-10-21
 

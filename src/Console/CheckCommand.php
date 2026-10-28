@@ -10,6 +10,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\HttpFoundation\Request;
 use TinyTank\Images\Images;
 use TinyTank\Kernel;
 
@@ -25,6 +26,7 @@ use TinyTank\Kernel;
  *   content       posts, pages, collections, components, translations and routes compile
  *   templates     every Twig template compiles; each page's template, and its form, exist
  *   pages         no content page is hidden behind a route
+ *   redirects     config/redirects.php: no old path a page still answers, every target of this site answers
  *   vite          the Vite build exists and has the entry points templates ask for
  */
 #[AsCommand('check', 'Checks this server and the site are ready to deploy, without changing anything.')]
@@ -196,6 +198,36 @@ final class CheckCommand extends Command
                 : $add('pages', 'error', implode(' ', array_map(static fn (string $uri, string $route) => "/{$uri} is answered by the route \"{$route}\" first: rename the page's folder or the route.", array_keys($shadowed), $shadowed)));
         } catch (\Throwable $e) {
             $add('pages', 'error', $e->getMessage());
+        }
+
+        // Redirects: asked of the site as it would answer without them.
+        if ($app->redirects->map !== []) {
+            try {
+                $without = Kernel::boot($root, false, ['cache_dir' => $app->cacheDir, 'redirects' => [], 'log' => ['path' => $app->cacheDir . '/check.log']]);
+                $without->vite->allowMissingBuild(); // the vite check reports a missing build
+                $problems = $warnings = [];
+                foreach ($app->redirects->map as $from => ['to' => $to]) {
+                    if ($without->handle(Request::create($app->site->baseUrl . $from))->getStatusCode() === 200) {
+                        $problems[] = "{$from} still has a page, which is never shown: remove the redirect or the page.";
+                    }
+                    if (str_starts_with($to, '/')) {
+                        $status = $without->handle(Request::create($app->site->baseUrl . $to))->getStatusCode();
+                        if ($status >= 400) {
+                            $problems[] = "{$from} goes to {$to}, which answers {$status}.";
+                        } elseif ($status !== 200) {
+                            $warnings[] = "{$from} goes to {$to}, which redirects again ({$status}): point it where that ends.";
+                        }
+                    }
+                }
+                $count = count($app->redirects->map);
+                match (true) {
+                    $problems !== [] => $add('redirects', 'error', implode(' ', [...$problems, ...$warnings])),
+                    $warnings !== [] => $add('redirects', 'warning', implode(' ', $warnings)),
+                    default => $add('redirects', 'ok', "{$count} redirect" . ($count === 1 ? '' : 's') . ', each to an address that answers.'),
+                };
+            } catch (\Throwable $e) {
+                $add('redirects', 'error', $e->getMessage());
+            }
         }
 
         // Vite: the build, and the entry points templates name.
