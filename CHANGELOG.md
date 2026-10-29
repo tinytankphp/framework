@@ -41,6 +41,10 @@ change behaviour, and its notes say what to update in your site.
 ### Skeleton
 
 - `config/redirects.php`, empty, with examples. Optional: a site without it has no redirects.
+- `playwright.config.js`: the test server clears `var/state/forms` before starting. Since 0.1.8 the
+  forms' rate limits live in `var/state/`, which `cache:clear` doesn't empty, so repeated local runs
+  of the browser tests hit the contact form's limit (5 an hour). For an existing site, add
+  `rm -rf var/state/forms &&` after `php bin/console cache:clear &&` in `webServer.command`.
 - The blog search and the Datastar demo read their signals with `signal()` and `signal_int()`, so a
   request with odd values gets an empty search instead of an error. For an existing site, the same
   change in `templates/_partials/blog-results.twig`, `blog-more.twig` and `search.twig`.
