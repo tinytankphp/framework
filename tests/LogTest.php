@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace TinyTank\Tests;
 
+use Monolog\Handler\DeduplicationHandler;
+use Monolog\Handler\PushoverHandler;
+use Monolog\Level;
 use Monolog\Logger;
 use TinyTank\Log\Log;
 use Symfony\Component\HttpFoundation\Request;
@@ -119,6 +122,23 @@ final class LogTest extends FrameworkTestCase
         self::assertStringContainsString('app.WARNING: Streamed', (string) file_get_contents($file));
     }
 
+    public function testErrorsArePushedWhenPushoverIsSetUp(): void
+    {
+        $dir = $this->tempDir('log');
+        $none = Log::create(self::PROJECT, ['path' => "{$dir}/app.log", 'pushover' => ['token' => '', 'user' => '']], false);
+        self::assertCount(1, $none->getHandlers(), 'not set up (empty variables): the file only');
+
+        $logger = Log::create(self::PROJECT, ['path' => "{$dir}/app.log", 'pushover' => ['token' => 'app-token', 'user' => 'user-key']], false, siteName: 'Lab909');
+        $dedup = $logger->getHandlers()[0];
+        self::assertInstanceOf(DeduplicationHandler::class, $dedup, 'each distinct error once an hour, sent at the end of the request');
+        $push = (fn () => $this->handler)->call($dedup);
+        self::assertInstanceOf(PushoverHandler::class, $push);
+        $read = static fn (string $property) => (fn () => $this->{$property})->call($push);
+        self::assertSame(['app-token', ['user-key'], 'Lab909'], [$read('token'), $read('users'), $read('title')]);
+        self::assertSame(Level::Error, $push->getLevel(), 'errors only');
+        self::assertFalse($read('useFormattedMessage'), 'the message only: no trace, no context');
+    }
+
     public function testConfigurationErrorsAreClear(): void
     {
         foreach ([
@@ -126,6 +146,8 @@ final class LogTest extends FrameworkTestCase
             [['days' => 0], '"days" is how many days'],
             [['file' => 'x.log'], 'unknown option "file"'],
             [['alert_to' => 'me@example.test'], 'set MAILER_DSN and MAILER_FROM too'],
+            [['pushover' => ['token' => 'app', 'user' => '']], 'need both PUSHOVER_TOKEN'],
+            [['pushover' => ['key' => 'app']], "\"pushover\" is ['token' => getenv('PUSHOVER_TOKEN')"],
         ] as [$config, $message]) {
             try {
                 Log::create(self::PROJECT, $config, false);

@@ -25,6 +25,9 @@ final class StaticPublishCommand extends Command
     /** The Worker's secrets for forms sent over SMTP; SMTP_HOST is required. */
     public const SMTP_SECRETS = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASSWORD'];
 
+    /** Optional, for any form: a message that couldn't be sent is pushed to your phone (Pushover). */
+    public const ALERT_SECRETS = ['PUSHOVER_TOKEN', 'PUSHOVER_USER'];
+
     public function __construct(private readonly string $root)
     {
         parent::__construct();
@@ -85,6 +88,13 @@ final class StaticPublishCommand extends Command
 
                 return Command::INVALID;
             }
+        }
+        // Alerts when a form can't be sent: both keys, or none.
+        $alerts = array_filter(array_combine(self::ALERT_SECRETS, array_map(static fn (string $key) => (string) getenv($key), self::ALERT_SECRETS)), static fn (string $value) => $value !== '');
+        if (is_file($dir . '/worker.js') && count($alerts) === count(self::ALERT_SECRETS)) {
+            $secrets += $alerts;
+        } elseif ($alerts !== []) {
+            $io->warning('Pushover alerts need both PUSHOVER_TOKEN and PUSHOVER_USER: none sent.');
         }
 
         // The secrets after the deploy, on wrangler's input (`deploy --secrets-file` would need them in a file).

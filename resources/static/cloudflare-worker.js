@@ -8,6 +8,8 @@
 // config/forms.php): "cloudflare", the send_email binding (Cloudflare Email Service, Workers Paid), or
 // "smtp", your own mail server (the SMTP_HOST, SMTP_PORT, SMTP_USER and SMTP_PASSWORD secrets,
 // uploaded by `bin/console publish:static`). The forms' settings are added below by the build.
+// Optional: with the PUSHOVER_TOKEN and PUSHOVER_USER secrets, a message that couldn't be sent is
+// pushed to your phone (https://pushover.net): the form and the error, never what the visitor wrote.
 import { EmailMessage } from 'cloudflare:email';
 import { connect } from 'cloudflare:sockets';
 
@@ -16,19 +18,19 @@ const FORMS = {}; // filled in by the build
 const LIMIT = 100_000; // bytes: far more than any form needs
 
 export default {
-    async fetch(request, env) {
+    async fetch(request, env, ctx) {
         const match = new URL(request.url).pathname.match(/^\/forms\/([a-z][a-z0-9_-]*)$/);
         const form = match ? FORMS[match[1]] : undefined;
         if (!form) {
             return env.ASSETS.fetch(request);
         }
 
-        return handle(request, env, form, match[1]);
+        return handle(request, env, form, match[1], ctx);
     },
 };
 
 /** One form submission: checked, emailed, answered. Exported for the tests. */
-export async function handle(request, env, form, name) {
+export async function handle(request, env, form, name, ctx = null) {
     if (request.method !== 'POST') {
         return new Response('Method Not Allowed', { status: 405, headers: { Allow: 'POST' } });
     }
@@ -74,6 +76,9 @@ export async function handle(request, env, form, name) {
         }
     } catch (error) {
         console.error(`Form "${name}" not sent: ${error}`);
+        // After the answer when the runtime allows it (ctx.waitUntil), so the visitor doesn't wait.
+        const alerting = alert(env, `${form.site}: the "${name}" form`, `A message wasn't sent: ${error.message ?? error}`, new URL(page, request.url).toString());
+        ctx?.waitUntil ? ctx.waitUntil(alerting) : await alerting;
         return datastar
             ? answer(name, form, page, { _form: `${texts.not_sent} ${texts.failed}` })
             : page_(texts.not_sent, texts.failed, [], page, texts.back, language, 502);
@@ -268,6 +273,29 @@ function base64(text) {
 }
 
 /** A small page in the form's language: what went wrong, and the way back. */
+/** When each alert was last pushed, by title: at most one an hour from a running Worker. */
+const alerted = new Map();
+export const ALERT_INTERVAL = 3600_000;
+
+/** Pushes an alert through Pushover, when its secrets are set; a failure is only logged. */
+export async function alert(env, title, message, url, now = Date.now(), send = fetch) {
+    if (!env.PUSHOVER_TOKEN || !env.PUSHOVER_USER || now - (alerted.get(title) ?? -Infinity) < ALERT_INTERVAL) {
+        return;
+    }
+    alerted.set(title, now);
+    try {
+        const response = await send('https://api.pushover.net/1/messages.json', {
+            method: 'POST',
+            body: new URLSearchParams({ token: env.PUSHOVER_TOKEN, user: env.PUSHOVER_USER, title, message: message.slice(0, 1024), url }),
+        });
+        if (!response.ok) {
+            console.error(`Pushover refused the alert: ${response.status} ${await response.text()}`);
+        }
+    } catch (error) {
+        console.error(`Pushover could not be reached: ${error}`);
+    }
+}
+
 /**
  * The answer to a Datastar post, as server-sent events: the `_forms.<name>` signals (every field's
  * error, '' when none, so the last ones are cleared; `sent`), and when sent, the form's "sent" HTML

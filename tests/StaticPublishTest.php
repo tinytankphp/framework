@@ -13,7 +13,7 @@ use TinyTank\Console\StaticPublishCommand;
 /** `bin/console publish:static`: the build on Cloudflare, with an API token and the forms' SMTP secrets from .env. */
 final class StaticPublishTest extends FrameworkTestCase
 {
-    private const KEYS = ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASSWORD'];
+    private const KEYS = ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASSWORD', 'PUSHOVER_TOKEN', 'PUSHOVER_USER'];
 
     protected function tearDown(): void
     {
@@ -78,6 +78,25 @@ final class StaticPublishTest extends FrameworkTestCase
         $tester->execute(['--dry-run' => true]);
         self::assertStringContainsString("SMTP_PASSWORD in .env has a $ outside single quotes", $tester->getDisplay(), 'it would arrive changed');
         self::assertStringNotContainsString('SMTP_USER in .env', $tester->getDisplay(), 'single quotes keep it as written');
+    }
+
+    public function testPushoverKeysGoWithAnyFormWhenBothAreSet(): void
+    {
+        $root = $this->copyToTemp(self::PROJECT, 'project');
+        self::write($root, [
+            '.env' => "CLOUDFLARE_API_TOKEN=token\nCLOUDFLARE_ACCOUNT_ID=account\nPUSHOVER_TOKEN=app\nPUSHOVER_USER=me\n",
+            'deploy/' . StaticBuildCommand::MARKER => '', 'deploy/wrangler.jsonc' => '{}', 'deploy/worker.js' => 'const FORMS = {"contact": {"send": "cloudflare"}};',
+        ]);
+        $tester = $this->tester($root);
+
+        $tester->execute(['--dry-run' => true]);
+        self::assertStringContainsString('secret bulk, with PUSHOVER_TOKEN, PUSHOVER_USER (values not shown)', $tester->getDisplay(), 'whatever sends the form');
+
+        putenv('PUSHOVER_USER');
+        self::write($root, ['.env' => "CLOUDFLARE_API_TOKEN=token\nCLOUDFLARE_ACCOUNT_ID=account\nPUSHOVER_TOKEN=app\n"]);
+        $tester->execute(['--dry-run' => true]);
+        self::assertStringContainsString('need both PUSHOVER_TOKEN and PUSHOVER_USER', $tester->getDisplay());
+        self::assertStringContainsString('No secrets.', $tester->getDisplay());
     }
 
     public function testTheSecretsReachWranglerOnItsInputOnly(): void

@@ -8,6 +8,7 @@ use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\DeduplicationHandler;
 use Monolog\Handler\FingersCrossedHandler;
 use Monolog\Handler\HandlerInterface;
+use Monolog\Handler\PushoverHandler;
 use Monolog\Handler\RotatingFileHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Level;
@@ -29,9 +30,11 @@ use Symfony\Component\Mime\Email;
  * - exception traces without function arguments in production, where a password or an email address
  *   could be;
  * - optional email alerts (`alert_to`) for errors, through the site's own mailer: one email per distinct
- *   error per hour, with the request's earlier log lines.
+ *   error per hour, with the request's earlier log lines;
+ * - optional push alerts (`pushover`: PUSHOVER_TOKEN and PUSHOVER_USER), the one third-party service,
+ *   chosen by the site: the error's message only, once per distinct error per hour, after the page.
  *
- * No third-party service: add a Monolog handler from a package for that ($app->logger->pushHandler()).
+ * Other services: a Monolog handler from a package ($app->logger->pushHandler()).
  */
 final class Log
 {
@@ -47,9 +50,9 @@ final class Log
      */
     public static function create(string $root, array $config, bool $debug, array $mailer = [], string $siteName = 'TinyTank', ?TransportInterface $transport = null): Logger
     {
-        $unknown = array_diff(array_keys($config), ['level', 'path', 'days', 'alert_to']);
+        $unknown = array_diff(array_keys($config), ['level', 'path', 'days', 'alert_to', 'pushover']);
         if ($unknown !== []) {
-            throw new \InvalidArgumentException('config/app.php log: unknown option "' . implode('", "', $unknown) . '" (level, path, days, alert_to).');
+            throw new \InvalidArgumentException('config/app.php log: unknown option "' . implode('", "', $unknown) . '" (level, path, days, alert_to, pushover).');
         }
         $level = (string) ($config['level'] ?? null ?: ($debug ? 'debug' : 'info'));
         if (!in_array($level, self::LEVELS, true)) {
@@ -72,6 +75,11 @@ final class Log
         $alertTo = self::addresses($config['alert_to'] ?? null);
         if ($alertTo !== []) {
             $logger->pushHandler(self::alerts($alertTo, $mailer, $siteName, $root, dirname($path), $file, $transport));
+        }
+
+        $pushover = self::pushover($config['pushover'] ?? null);
+        if ($pushover !== null) {
+            $logger->pushHandler(self::push($pushover, $siteName, $root, dirname($path)));
         }
 
         // A log that can't be written (permissions, full disk) never takes the page down with it.
@@ -109,6 +117,39 @@ final class Log
             Level::Error,
             bufferSize: 50,
         );
+    }
+
+    /**
+     * config/app.php log `pushover`: ['token' => PUSHOVER_TOKEN, 'user' => PUSHOVER_USER], both or neither.
+     *
+     * @return array{token: string, user: string}|null
+     */
+    private static function pushover(mixed $config): ?array
+    {
+        $token = is_array($config) ? trim((string) ($config['token'] ?? '')) : '';
+        $user = is_array($config) ? trim((string) ($config['user'] ?? '')) : '';
+        if ($config !== null && (!is_array($config) || array_diff(array_keys($config), ['token', 'user']) !== [])) {
+            throw new \InvalidArgumentException("config/app.php log: \"pushover\" is ['token' => getenv('PUSHOVER_TOKEN'), 'user' => getenv('PUSHOVER_USER')].");
+        }
+        if (($token === '') !== ($user === '')) {
+            throw new \InvalidArgumentException('config/app.php log: Pushover alerts need both PUSHOVER_TOKEN (the application\'s token) and PUSHOVER_USER (your user key).');
+        }
+
+        return $token !== '' ? ['token' => $token, 'user' => $user] : null;
+    }
+
+    /**
+     * Errors pushed to Pushover: the message only (no trace, no earlier lines), each distinct error at
+     * most once an hour (deduplication, in var/log/), sent when the request ends, after the page.
+     *
+     * @param array{token: string, user: string} $pushover
+     */
+    private static function push(array $pushover, string $siteName, string $root, string $logDir): HandlerInterface
+    {
+        $handler = new PushoverHandler($pushover['token'], $pushover['user'], $siteName, Level::Error, timeout: 5.0, writingTimeout: 5.0, connectionTimeout: 5.0);
+        $store = str_contains($logDir, '://') ? sys_get_temp_dir() . '/tinytank-push-' . hash('xxh128', $root) : $logDir . '/push.dedup';
+
+        return new DeduplicationHandler($handler, $store, Level::Error, self::ALERT_INTERVAL);
     }
 
     private static function formatter(string $root): LineFormatter

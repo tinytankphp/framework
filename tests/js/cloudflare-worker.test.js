@@ -1,6 +1,6 @@
 // @vitest-environment node
-import { describe, expect, it } from 'vitest';
-import worker, { handle, message, validate } from '../../resources/static/cloudflare-worker.js';
+import { describe, expect, it, vi } from 'vitest';
+import worker, { ALERT_INTERVAL, alert, handle, message, validate } from '../../resources/static/cloudflare-worker.js';
 
 // A form as the build describes it (TinyTank\Static\Builder::formData()).
 const form = {
@@ -185,3 +185,53 @@ describe('the email', () => {
         expect(head.split('\r\n').every((line) => line.length < 200)).toBe(true);
     });
 });
+
+describe('alerts through Pushover', () => {
+    const calls = [];
+    const send = async (url, init) => {
+        calls.push([url, Object.fromEntries(init.body)]);
+        return new Response('{"status":1}');
+    };
+    const keys = { PUSHOVER_TOKEN: 'app-token', PUSHOVER_USER: 'user-key' };
+
+    it('pushes the form and the error, never what was written, at most once an hour', async () => {
+        calls.length = 0;
+        await alert(keys, 'Lab909: the "contact" form', 'A message wasn\'t sent: 535 Authentication Failed', 'https://lab909.dev/contact', 1_000, send);
+        await alert(keys, 'Lab909: the "contact" form', 'again', 'https://lab909.dev/contact', 2_000, send);
+
+        expect(calls).toHaveLength(1);
+        expect(calls[0][0]).toBe('https://api.pushover.net/1/messages.json');
+        expect(calls[0][1]).toEqual({ token: 'app-token', user: 'user-key', title: 'Lab909: the "contact" form', message: 'A message wasn\'t sent: 535 Authentication Failed', url: 'https://lab909.dev/contact' });
+
+        await alert(keys, 'Lab909: the "contact" form', 'an hour later', 'https://lab909.dev/contact', 1_000 + ALERT_INTERVAL, send);
+        expect(calls).toHaveLength(2);
+    });
+
+    it('does nothing without both secrets, and never fails the answer', async () => {
+        calls.length = 0;
+        await alert({ PUSHOVER_TOKEN: 'only-one' }, 'T', 'm', 'u', 0, send);
+        expect(calls).toHaveLength(0);
+        await expect(alert(keys, 'Other', 'm', 'u', 0, async () => { throw new Error('offline'); })).resolves.toBeUndefined();
+    });
+
+    it('is sent when a form couldn\'t be, after the answer', async () => {
+        const pushed = [];
+        vi.stubGlobal('fetch', async (url, init) => {
+            pushed.push(Object.fromEntries(init.body));
+            return new Response('{"status":1}');
+        });
+        try {
+            const waited = [];
+            const response = await handle(post(valid), { ...env(true), ...keys }, form, 'contact', { waitUntil: (promise) => waited.push(promise) });
+
+            expect(response.status).toBe(502);
+            expect(waited).toHaveLength(1, 'handed to waitUntil: the visitor doesn\'t wait for it');
+            await Promise.all(waited);
+            expect(pushed[0].message).toBe('A message wasn\'t sent: quota');
+            expect(JSON.stringify(pushed)).not.toContain('Ada', 'nothing the visitor wrote');
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+});
+

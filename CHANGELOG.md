@@ -9,6 +9,11 @@ change behaviour, and its notes say what to update in your site.
 
 ### Added
 
+- **Push alerts through Pushover**, optional: with `PUSHOVER_TOKEN` and `PUSHOVER_USER` (config
+  `log.pushover`), errors on the PHP site are pushed to your phone, the message only, once per
+  distinct error per hour, after the page; and on a static site the forms' Worker pushes an alert
+  when a message can't be sent (the error, never what the visitor wrote; at most once an hour from a
+  running Worker; `publish:static` uploads the keys as secrets with any form).
 - **A redirect map**: `config/redirects.php` (optional), old path => new path or
   `['to' => …, 'status' => 302]`, to this site or another. Answered first, before languages and
   routes, keeping the query string. Mistakes (a path without `/`, a chain, an unknown status) stop
@@ -46,6 +51,9 @@ change behaviour, and its notes say what to update in your site.
 
 ### Skeleton
 
+- `config/app.php` `log.pushover` and `.env.example`: the optional Pushover keys. For an existing
+  site, add `'pushover' => ['token' => getenv('PUSHOVER_TOKEN') ?: null, 'user' => getenv('PUSHOVER_USER') ?: null]`
+  to `log`.
 - The contact form is sent with Datastar on static sites too, and shows the host's answer in place
   (`templates/_forms/contact.twig`: the `data-on:submit` for both, `form_spam()` first, the
   `site.static` error elements). For an existing site, copy those changes.
