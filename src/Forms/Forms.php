@@ -132,15 +132,20 @@ final class Forms
     public const STATIC_URL = '/forms';
 
     /**
-     * The markup a static build puts in a form: what works without this server (the honeypot), and
-     * the page the form is on, for the host to send the visitor back to, in the page's language.
+     * The markup a static build puts in a form: what works without this server (the honeypot), the
+     * page the form is on, for the host to send the visitor back to, in the page's language, and the
+     * signals the host answers a Datastar post with: `_forms.<name>.sent`, and `.errors.<field>` and
+     * `.errors._form` ('' when fine), for the template to show.
      */
     public function staticMarkup(string $form, string $page): string
     {
         $form = $this->get($form);
         $honeypot = $form->honeypot() ? (new Spam\Honeypot())->markup($form) : '';
+        $errors = array_fill_keys([...array_keys($form->fields), '_form'], '');
+        $signals = json_encode(['_forms' => [$form->name => ['sent' => false, 'errors' => $errors]]], JSON_THROW_ON_ERROR | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 
-        return $honeypot . '<input type="hidden" name="_page" value="' . htmlspecialchars($page, ENT_QUOTES | ENT_HTML5) . '">';
+        return $honeypot . '<input type="hidden" name="_page" value="' . htmlspecialchars($page, ENT_QUOTES | ENT_HTML5) . '">'
+            . '<div hidden data-signals="' . htmlspecialchars($signals, ENT_QUOTES | ENT_HTML5) . '"></div>';
     }
 
     /** A form's state before anything was sent: for the page that shows it. */

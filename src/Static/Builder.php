@@ -90,10 +90,15 @@ final class Builder
         }
 
         // Each form page's "sent" state, which the host sends visitors to: the page with ?sent=1, as
-        // the PHP site shows it after a post without JavaScript.
-        foreach ($build->forms as $form) {
+        // the PHP site shows it after a post without JavaScript. Posted by Datastar, the host puts the
+        // form from that page (found by its action, patched by its id) in place of the one filled in.
+        foreach ($build->forms as $name => $form) {
             foreach (array_keys($form['pages']) as $page) {
                 $this->render(rtrim($page, '/') . '/sent', $build, $page . '?sent=1');
+                $html = $this->sentForm((string) $this->app->handle(Request::create($this->app->site->baseUrl . $page . '?sent=1'))->getContent(), $name);
+                if ($html !== null) {
+                    $build->forms[$name]['sent'][$page] = $html;
+                }
             }
         }
 
@@ -169,6 +174,9 @@ final class Builder
             if ($method === 'get' && !isset($query['config']) && $this->internal($url) !== null) {
                 continue; // a plain page of this site, fetched by Datastar: built like any other (see links())
             }
+            if ($method === 'post' && $this->staticForm((string) parse_url($url, PHP_URL_PATH)) !== null) {
+                continue; // a form the host answers, sent by Datastar: it answers in place
+            }
             $config = json_decode((string) base64_decode(strtr(explode('.', is_string($query['config'] ?? null) ? $query['config'] : '')[0], '-_', '+/')), true);
             $target = is_array($config) && is_string($config['t'] ?? null) ? "template {$config['t']}" : (string) parse_url($url, PHP_URL_PATH);
             $found[] = 'a Datastar ' . strtoupper($method) . " action to the server ({$target})";
@@ -220,7 +228,16 @@ final class Builder
         }
     }
 
-    /** @return array{pages: array<string, string>, fields: array<string, array{type: string, required: bool, min: ?int, max: int, choices: list<string>}>, to: list<string>, from: string, send: string, reply_to: ?string, honeypot: bool, max_links: ?int, subject: array<string, string>, messages: array<string, array<string, string>>} */
+    /** The <form> posting to /forms/<name> in a page, with an id (Datastar patches by id), or null. */
+    private function sentForm(string $html, string $name): ?string
+    {
+        $document = \Dom\HTMLDocument::createFromString($html, LIBXML_NOERROR);
+        $form = $document->querySelector('form[action="' . Forms::STATIC_URL . '/' . $name . '"][id]');
+
+        return $form !== null ? $document->saveHtml($form) : null;
+    }
+
+    /** @return array{pages: array<string, string>, fields: array<string, array{type: string, required: bool, min: ?int, max: int, choices: list<string>}>, to: list<string>, from: string, send: string, reply_to: ?string, honeypot: bool, max_links: ?int, subject: array<string, string>, messages: array<string, array<string, string>>, sent?: array<string, string>} */
     private function formData(string $name): array
     {
         $form = $this->app->forms->get($name);
@@ -240,6 +257,7 @@ final class Builder
             'max_links' => $form->maxLinks(),
             'subject' => [],
             'messages' => [],
+            'sent' => [],
         ];
     }
 

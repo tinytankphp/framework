@@ -96,6 +96,62 @@ describe('the Worker', () => {
         expect(await (await worker.fetch(new Request('https://lab909.dev/about'), env())).text()).toBe('a file');
         expect(await (await worker.fetch(new Request('https://lab909.dev/forms/unknown', { method: 'POST' }), env())).text()).toBe('a file');
     });
+
+    describe('posted by Datastar', () => {
+        const datastar = { 'Datastar-Request': 'true' };
+        const withSent = { ...form, sent: { '/contact': '<form id="contact-form">\n  <p role="status">Thanks!</p>\n</form>' } };
+        // The server-sent events, as [event, {key: [lines]}].
+        const events = async (response) => (await response.text()).trim().split('\n\n').map((block) => {
+            const [first, ...data] = block.split('\n');
+            const fields = {};
+            for (const line of data) {
+                const [key, ...rest] = line.replace(/^data: /, '').split(' ');
+                (fields[key] ??= []).push(rest.join(' '));
+            }
+            return [first.replace('event: ', ''), fields];
+        });
+
+        it('replaces the form with its "sent" state, in place', async () => {
+            const e = env();
+            const response = await handle(post(valid, datastar), e, withSent, 'contact');
+
+            expect(response.status).toBe(200);
+            expect(response.headers.get('Content-Type')).toBe('text/event-stream');
+            expect(e.sent).toHaveLength(1);
+            const [[signals, patch], [elements, html]] = await events(response);
+            expect(signals).toBe('datastar-patch-signals');
+            expect(JSON.parse(patch.signals[0])._forms.contact.sent).toBe(true);
+            expect(elements).toBe('datastar-patch-elements');
+            expect(html.elements).toEqual(['<form id="contact-form">', '  <p role="status">Thanks!</p>', '</form>']);
+        });
+
+        it('shows the mistakes next to their fields, and keeps what was typed', async () => {
+            const e = env();
+            const response = await handle(post({ ...valid, email: 'nope', message: 'http://a.test http://b.test http://c.test' }, datastar), e, withSent, 'contact');
+
+            expect(response.status).toBe(200, 'Datastar only applies a 2xx answer');
+            expect(e.sent).toHaveLength(0);
+            const all = await events(response);
+            expect(all).toHaveLength(1, 'no HTML: the form stays as it is');
+            const { contact } = JSON.parse(all[0][1].signals[0])._forms;
+            expect(contact.sent).toBe(false);
+            expect(contact.errors).toEqual({ name: '', email: 'Enter a valid email address.', message: '', consent: '', _form: 'Please include at most 2 links.' });
+        });
+
+        it('says when sending failed, above the form', async () => {
+            const [[, patch]] = await events(await handle(post(valid, datastar), env(true), withSent, 'contact'));
+
+            expect(JSON.parse(patch.signals[0])._forms.contact.errors._form).toBe('Your message wasn\'t sent. Sending didn\'t work.');
+        });
+
+        it('tells a bot it worked', async () => {
+            const e = env();
+            const all = await events(await handle(post({ ...valid, website: 'x' }, datastar), e, withSent, 'contact'));
+
+            expect(e.sent).toHaveLength(0);
+            expect(JSON.parse(all[0][1].signals[0])._forms.contact.sent).toBe(true);
+        });
+    });
 });
 
 describe('the email', () => {

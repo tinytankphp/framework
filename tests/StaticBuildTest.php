@@ -75,7 +75,7 @@ final class StaticBuildTest extends FrameworkTestCase
         $root = $this->project();
         self::write($root, [
             'config/forms.php' => "<?php return ['contact' => ['fields' => ['email' => ['type' => 'email', 'required' => true], 'message' => ['type' => 'textarea', 'min' => 10]], 'to' => 'me@example.com', 'subject' => 'From {email}', 'spam' => ['honeypot', 'max_links' => 1], 'static' => ['from' => 'form@forms.example.com']]];",
-            'templates/custom-page.twig' => "{% extends '_layout.twig' %}{% block content %}<h1>{{ page.title }}</h1><form method=\"post\" action=\"{{ form_action('contact', '/contact') }}\">{{ form_spam('contact') }}</form>{% endblock %}",
+            'templates/custom-page.twig' => "{% extends '_layout.twig' %}{% block content %}<h1>{{ page.title }}</h1><form id=\"contact-form\" method=\"post\" action=\"{{ form_action('contact', '/contact') }}\" data-on:submit__prevent=\"{{ datastar.action('post', form_action('contact', '/contact'), {contentType: 'form'}) }}\">{{ form_spam('contact') }}</form>{% endblock %}",
         ]);
         $app = $this->kernel(false, ['url' => 'https://static.test', 'cache_dir' => $this->tempDir('cache'), 'forms' => require "{$root}/config/forms.php"], $root);
         $out = $this->tempDir('out');
@@ -91,10 +91,15 @@ final class StaticBuildTest extends FrameworkTestCase
         self::assertStringContainsString('name="website"', $html, 'the honeypot works without a server');
         self::assertStringContainsString('<input type="hidden" name="_page" value="/contact">', $html, 'where to send the visitor back');
         self::assertStringContainsString('name="_page" value="/it/contact"', (string) file_get_contents("{$out}/it/contact.html"), 'each language its own page');
-        self::assertArrayNotHasKey('/contact', $build->dynamic, 'not a server feature any more');
+        self::assertArrayNotHasKey('/contact', $build->dynamic, 'not a server feature any more, sent by Datastar too');
         self::assertFileExists("{$out}/contact/sent.html", 'the "sent" state, where the host sends visitors');
+        self::assertStringContainsString('<div hidden data-signals="{&quot;_forms&quot;:{&quot;contact&quot;:{&quot;sent&quot;:false,&quot;errors&quot;:{&quot;email&quot;:&quot;&quot;,&quot;message&quot;:&quot;&quot;,&quot;_form&quot;:&quot;&quot;}}}}"></div>', $html, 'the signals the host answers a Datastar post with');
 
         $form = $build->forms['contact'] ?? [];
+        // Posted by Datastar, the host puts the form's "sent" state in place, by its id; each language its own.
+        self::assertStringStartsWith('<form id="contact-form" method="post" action="/forms/contact" data-on:submit__prevent="@post(&quot;/forms/contact&quot;, {&quot;contentType&quot;:&quot;form&quot;})">', $form['sent']['/contact'] ?? '', 'Datastar\'s attributes kept');
+        self::assertStringEndsWith('</form>', $form['sent']['/contact'] ?? '');
+        self::assertArrayHasKey('/it/contact', $form['sent'] ?? []);
         self::assertSame(['/contact' => 'en', '/it/contact' => 'it'], $form['pages'] ?? null);
         self::assertSame([['me@example.com'], 'form@forms.example.com', 'email', true, 1], [$form['to'], $form['from'], $form['reply_to'], $form['honeypot'], $form['max_links']]);
 

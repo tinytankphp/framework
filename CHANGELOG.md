@@ -32,6 +32,12 @@ change behaviour, and its notes say what to update in your site.
 
 ### Changed
 
+- **Static forms answer in place when Datastar sends them**: the Worker replies with the form's
+  "sent" state (taken by the build from the form page's sent version, by the form's `id`), or with
+  the mistakes as the `_forms.<form>.errors.<field>` and `.errors._form` signals, so nothing typed
+  is lost. `form_spam()` creates those signals in static builds (put it first in the form); a
+  Datastar post to `/forms/<name>` no longer counts as needing the server. Without JavaScript,
+  nothing changes.
 - **Bad Datastar requests answer 400** (signals that aren't a JSON object) **or 413** (more than
   64 KB), instead of rendering with no signals.
 - **A response that sets a cookie is never public**: it gets `no-store, private` and no ETag,
@@ -40,6 +46,9 @@ change behaviour, and its notes say what to update in your site.
 
 ### Skeleton
 
+- The contact form is sent with Datastar on static sites too, and shows the host's answer in place
+  (`templates/_forms/contact.twig`: the `data-on:submit` for both, `form_spam()` first, the
+  `site.static` error elements). For an existing site, copy those changes.
 - `config/redirects.php`, empty, with examples. Optional: a site without it has no redirects.
 - `playwright.config.js`: the test server clears `var/state/forms` before starting. Since 0.1.8 the
   forms' rate limits live in `var/state/`, which `cache:clear` doesn't empty, so repeated local runs

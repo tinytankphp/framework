@@ -2,7 +2,9 @@
 // "cloudflare"). Every page is a static file; this code runs only for what isn't one: the forms,
 // posted to /forms/<name>. It checks them like the PHP site does (config/forms.php: required fields,
 // lengths, email format, choices, the honeypot, the links limit) and emails them, then sends the
-// visitor to the form page's "sent" state. Two ways to send, per form (`static.send` in
+// visitor to the form page's "sent" state. Posted by Datastar (a Datastar-Request header), it answers
+// in place instead, so nothing typed is lost: the form's "sent" HTML (from the build), or its errors as
+// the `_forms.<name>` signals (`errors.<field>`, `errors._form`). Two ways to send, per form (`static.send` in
 // config/forms.php): "cloudflare", the send_email binding (Cloudflare Email Service, Workers Paid), or
 // "smtp", your own mail server (the SMTP_HOST, SMTP_PORT, SMTP_USER and SMTP_PASSWORD secrets,
 // uploaded by `bin/console publish:static`). The forms' settings are added below by the build.
@@ -44,7 +46,10 @@ export async function handle(request, env, form, name) {
     const page = Object.hasOwn(form.pages, data.get('_page')) ? data.get('_page') : Object.keys(form.pages)[0];
     const language = form.pages[page];
     const texts = form.messages[language] ?? Object.values(form.messages)[0];
-    const sent = Response.redirect(new URL(page.replace(/\/$/, '') + '/sent', request.url).toString(), 303);
+    const datastar = request.headers.has('Datastar-Request');
+    const sent = datastar
+        ? answer(name, form, page, {}, true)
+        : Response.redirect(new URL(page.replace(/\/$/, '') + '/sent', request.url).toString(), 303);
 
     // A bot filled in the hidden field: it's told it worked, and nothing is sent.
     if (form.honeypot && String(data.get('website') ?? '') !== '') {
@@ -53,7 +58,9 @@ export async function handle(request, env, form, name) {
 
     const [values, errors] = validate(form, data, texts);
     if (errors.length > 0) {
-        return page_(texts.not_sent, texts.check, errors, page, texts.back, language, 422);
+        return datastar
+            ? answer(name, form, page, Object.fromEntries(errors.map(([field, error]) => [field || '_form', error])))
+            : page_(texts.not_sent, texts.check, errors, page, texts.back, language, 422);
     }
 
     try {
@@ -67,7 +74,9 @@ export async function handle(request, env, form, name) {
         }
     } catch (error) {
         console.error(`Form "${name}" not sent: ${error}`);
-        return page_(texts.not_sent, texts.failed, [], page, texts.back, language, 502);
+        return datastar
+            ? answer(name, form, page, { _form: `${texts.not_sent} ${texts.failed}` })
+            : page_(texts.not_sent, texts.failed, [], page, texts.back, language, 502);
     }
 
     return sent;
@@ -259,6 +268,23 @@ function base64(text) {
 }
 
 /** A small page in the form's language: what went wrong, and the way back. */
+/**
+ * The answer to a Datastar post, as server-sent events: the `_forms.<name>` signals (every field's
+ * error, '' when none, so the last ones are cleared; `sent`), and when sent, the form's "sent" HTML
+ * from the page, which replaces the form by its id.
+ */
+export function answer(name, form, page, errors, sent = false) {
+    const all = Object.fromEntries([...Object.keys(form.fields), '_form'].map((field) => [field, errors[field] ?? '']));
+    const events = [['datastar-patch-signals', [`signals ${JSON.stringify({ _forms: { [name]: { sent, errors: all } } })}`]]];
+    const html = sent ? form.sent?.[page] : null;
+    if (html) {
+        events.push(['datastar-patch-elements', html.split('\n').map((line) => `elements ${line}`)]);
+    }
+    const body = events.map(([event, lines]) => `event: ${event}\n${lines.map((line) => `data: ${line}\n`).join('')}\n`).join('');
+
+    return new Response(body, { headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store' } });
+}
+
 function page_(title, intro, errors, back, backText, language, status) {
     const escape = (text) => String(text).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
     const items = errors.map(([field, error]) => `<li>${field ? `<strong>${escape(field)}</strong>: ` : ''}${escape(error)}</li>`).join('');
