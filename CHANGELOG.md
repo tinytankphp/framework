@@ -7,6 +7,24 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-10-29
+
+Safer defaults and the last pieces of the stabilization roadmap: a redirect map, Datastar signals
+read with their type, responses for one visitor that are never cached, static forms answered in
+place, and optional push alerts through Pushover. To check in an existing site:
+
+- a response that sets a cookie is now `no-store, private`, whatever its handler said;
+- a Datastar request whose signals aren't valid JSON answers 400, one larger than 64 KB 413;
+- the skeleton's changes below (the contact form, the signal helpers in the blog partials,
+  `config/redirects.php`, the Pushover keys, the browser tests' server) say what to copy.
+
+### Security
+
+- **`symfony/mime` 7.4.22 or later** (CVE-2026-45070, an email header injection through parameter
+  names, reported on 2026-10-28). The framework now requires it directly: updating TinyTank updates
+  it (`composer update tinytank/framework -W`). TinyTank builds its emails' headers from config
+  and from validated addresses, but the fixed version closes it for any code that uses the mailer.
+
 ### Added
 
 - **Push alerts through Pushover**, optional: with `PUSHOVER_TOKEN` and `PUSHOVER_USER` (config
@@ -402,7 +420,8 @@ The first tagged release. TinyTank is in beta: the API may still change between 
   want the same: `config/app.php` (`log` and `cdn` sections), `src/Controller/PageController.php`
   (`cdn: false` support), `config/routes.php` (blog page numbers up to 6 digits), `.env.example`.
 
-[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.8...HEAD
+[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.9...HEAD
+[0.1.9]: https://github.com/tinytankphp/framework/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/tinytankphp/framework/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/tinytankphp/framework/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/tinytankphp/framework/compare/v0.1.5...v0.1.6
