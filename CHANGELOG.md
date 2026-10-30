@@ -7,6 +7,13 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+### Skeleton
+
+- `package.json` `overrides`: `@tailwindcss/typography` gets `postcss-selector-parser` 6.1.5 or later
+  (GHSA-rj75-hqrm-r3gf, slow parsing of crafted selectors; typography 0.5.20 pins 6.0.10). Build tooling
+  only, the CSS it builds is identical. For an existing site, add the same `overrides` block and run
+  `npm install`; `npm audit` then reports nothing.
+
 ## [0.1.10] - 2026-10-30
 
 Accessibility: every page of a site is now checked in both themes (axe-core, in the skeleton's
