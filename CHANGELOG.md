@@ -7,6 +7,12 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+### Skeleton
+
+- The contact form's button shows a spinner while the message is sent, and is marked busy
+  (`aria-busy`) as well as disabled until the answer arrives (`templates/_forms/contact.twig`). For
+  an existing site, copy the button.
+
 ## [0.1.9] - 2026-10-29
 
 Safer defaults and the last pieces of the stabilization roadmap: a redirect map, Datastar signals
