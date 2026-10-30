@@ -7,7 +7,25 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+### Added
+
+- **Task lists are accessible**: each checkbox of a Markdown task list (`- [x] Done`) is named after
+  its item (`aria-label`), so screen readers say what it is, not an unnamed checkbox.
+
+### Changed
+
+- The default video template's caption has no `opacity-75` (it lowered the text's contrast below
+  4.5:1 on light backgrounds); it takes the surrounding text colour.
+
 ### Skeleton
+
+- **Every page is checked for accessibility**, in the light and the dark theme, with axe-core
+  (`tests/e2e/axe.spec.js`, WCAG 2.2 AA and best practices, `@axe-core/playwright`): any problem
+  fails the browser tests, so CI. `npm run test:a11y` runs the accessibility tests alone; the optional
+  `.githooks/pre-push` runs them before each push (`git config core.hooksPath .githooks`). The dark
+  theme's `--color-subtle` is lighter, for 4.5:1. For an existing site: `npm i -D @axe-core/playwright`,
+  copy `tests/e2e/axe.spec.js`, the `test:a11y` script and `.githooks/`, then fix what it finds (the
+  docs' Accessibility section explains how).
 
 - The contact form's button shows a spinner while the message is sent, and is marked busy
   (`aria-busy`) as well as disabled until the answer arrives (`templates/_forms/contact.twig`). For

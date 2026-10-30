@@ -92,6 +92,8 @@ final class MarkdownParser
         $environment->addRenderer(Component::class, new ComponentRenderer($this->registerComponent(...)));
         // ```php blocks: syntax highlighting when content compiles, with hl-* classes the site styles.
         $environment->addRenderer(\League\CommonMark\Extension\CommonMark\Node\Block\FencedCode::class, new \TinyTank\Content\CodeBlockRenderer(), 10);
+        // - [x] task lists: each checkbox named after its item, for screen readers.
+        $environment->addRenderer(\League\CommonMark\Extension\TaskList\TaskListItemMarker::class, new \TinyTank\Content\TaskListMarkerRenderer(), 10);
         if ($images !== null) {
             // Images from the post's folder: a <picture> with responsive versions.
             $environment->addRenderer(\League\CommonMark\Extension\CommonMark\Node\Inline\Image::class, new \TinyTank\Images\ImageRenderer($images), 10);
