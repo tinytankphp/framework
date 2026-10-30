@@ -9,6 +9,9 @@ change behaviour, and its notes say what to update in your site.
 
 ### Skeleton
 
+- **CI audits the dependencies**: `composer audit` and `npm audit --audit-level=high` after the
+  installs, so a package with a known vulnerability fails the run (moderate JavaScript advisories are
+  only reported). For an existing site, add the two steps to `.github/workflows/ci.yml`.
 - `package.json` `overrides`: `@tailwindcss/typography` gets `postcss-selector-parser` 6.1.5 or later
   (GHSA-rj75-hqrm-r3gf, slow parsing of crafted selectors; typography 0.5.20 pins 6.0.10). Build tooling
   only, the CSS it builds is identical. For an existing site, add the same `overrides` block and run

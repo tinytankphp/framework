@@ -43,3 +43,7 @@ jobs:
         run: |
           npm ci
           npm test
+
+      # Fails on a high or critical advisory in the test tooling's packages (moderate: reported only).
+      - name: JS dependency audit
+        run: npm audit --audit-level=high
