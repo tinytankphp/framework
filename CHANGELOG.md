@@ -7,6 +7,12 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-10-30
+
+Accessibility: every page of a site is now checked in both themes (axe-core, in the skeleton's
+browser tests), and the framework's own markup passes. Nothing to change in an existing site for the
+framework's part; to add the checks, see the Skeleton notes below and the docs' Accessibility section.
+
 ### Added
 
 - **Task lists are accessible**: each checkbox of a Markdown task list (`- [x] Done`) is named after
@@ -444,7 +450,8 @@ The first tagged release. TinyTank is in beta: the API may still change between 
   want the same: `config/app.php` (`log` and `cdn` sections), `src/Controller/PageController.php`
   (`cdn: false` support), `config/routes.php` (blog page numbers up to 6 digits), `.env.example`.
 
-[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.9...HEAD
+[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.10...HEAD
+[0.1.10]: https://github.com/tinytankphp/framework/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/tinytankphp/framework/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/tinytankphp/framework/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/tinytankphp/framework/compare/v0.1.6...v0.1.7
