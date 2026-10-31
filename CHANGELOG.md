@@ -16,6 +16,10 @@ change behaviour, and its notes say what to update in your site.
   (GHSA-rj75-hqrm-r3gf, slow parsing of crafted selectors; typography 0.5.20 pins 6.0.10). Build tooling
   only, the CSS it builds is identical. For an existing site, add the same `overrides` block and run
   `npm install`; `npm audit` then reports nothing.
+- `.gitignore` no longer lists the maintainers' local folders (`/docs/`, `/sites/` and a few files of
+  one machine), which every new site inherited: maintainers exclude them in their clone's
+  `.git/info/exclude` (CONTRIBUTING.md). For an existing site, delete those lines from its
+  `.gitignore`.
 
 ## [0.1.10] - 2026-10-30
 
