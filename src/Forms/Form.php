@@ -127,6 +127,12 @@ final class Form
         return in_array('honeypot', $this->spam, true) || array_key_exists('honeypot', $this->spam);
     }
 
+    /** Whether the form carries a signed token (`timing`): the PHP site times it, a static build's host checks it's this site's. */
+    public function timing(): bool
+    {
+        return in_array('timing', $this->spam, true) || array_key_exists('timing', $this->spam);
+    }
+
     public function maxLinks(): ?int
     {
         if (array_key_exists('max_links', $this->spam)) {

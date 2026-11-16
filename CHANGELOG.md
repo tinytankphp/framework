@@ -7,8 +7,48 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+Security fixes from a review of the framework. For an existing site: `composer update` (Symfony
+7.4.23); a static site with forms needs a new build and publish, built with the same `APP_SECRET`
+every time, and its form templates must call `{{ form_spam('name') }}` inside the `<form>` (the
+skeleton's do; the build stops and says so otherwise). An SMTP server for static forms on a port
+other than 465 must offer STARTTLS.
+
+### Security
+
+- **Open redirect through the default language's prefix**: `/en//example.com` answered
+  `301 Location: //example.com`, which a browser reads as another site. The redirect now always
+  stays on the site (`/example.com`), and the language switcher's and hreflang links are built from
+  a path with one leading slash.
+- **Symfony 7.4.23** at least for `symfony/http-foundation`, `routing`, `yaml` and `config`: the
+  7.4.22 packages have published advisories (`composer audit`).
+- **Static forms (Cloudflare Worker)**:
+  - With the `timing` check, the build signs a token into the form's pages and the Worker only
+    takes posts that carry it (`Forms::staticToken()`; the key, derived from `APP_SECRET`, is in
+    `worker.js`, never served). A script posting to `/forms/<name>` blindly is told it worked and
+    nothing is sent. Tokens of older builds expire a day after a new build; a page that old asks to
+    be reloaded ("This page is out of date: reload it and send the form again.", a new text to
+    translate). `build:static` stops when a page's form has `timing` but no `form_spam()`.
+  - The body is read up to 100 KB whatever `Content-Length` says (it was only checked when the
+    header was there); a body that isn't a form answers 400.
+  - SMTP: every port but 465 uses STARTTLS and stops when the server doesn't offer it (before,
+    any port other than 465 and 587 sent the password and the message without TLS). Only a server
+    on `localhost` is used without TLS.
+- **`preview:static --php`** served the host's private files (`_headers`, `wrangler.jsonc`,
+  `worker.js`) when the path was written another way (`/./worker.js`, `//worker.js`). Paths are
+  normalised first, and `.wrangler/` is private too.
+
+### Fixed
+
+- **A malformed request is a 400, not a 500**: an array where one value goes (`?config[]=1` on
+  `/datastar`, `_token[]=…` in a form) made Symfony refuse to read it, which was logged as an error
+  of the site with a stack trace (and alerted, with `LOG_ALERT_TO` or Pushover). It now answers
+  "Bad request." and logs nothing.
+
 ### Skeleton
 
+- `translations/it.php` has the static forms' new text ("This page is out of date: reload it and
+  send the form again."), and `AGENTS.md` says a static form needs `form_spam()`. For an existing
+  site with other languages, translate that text.
 - **CI audits the dependencies**: `composer audit` and `npm audit --audit-level=high` after the
   installs, so a package with a known vulnerability fails the run (moderate JavaScript advisories are
   only reported). For an existing site, add the two steps to `.github/workflows/ci.yml`.

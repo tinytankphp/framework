@@ -178,7 +178,9 @@ final class Site extends AbstractExtension implements GlobalsInterface
             throw new \InvalidArgumentException("Unknown language \"{$language}\".");
         }
         $this->language = $language;
-        $this->path = $path;
+        // One leading slash: the switcher's and hreflang links are built from this path, and "//host"
+        // in a link is another site.
+        $this->path = '/' . ltrim($path, '/\\');
         $this->alternates = null;
         $this->fallbacks = [];
     }
@@ -224,8 +226,11 @@ final class Site extends AbstractExtension implements GlobalsInterface
             return [$this->defaultLanguage, $path, false];
         }
         $rest = '/' . (explode('/', ltrim($path, '/'), 2)[1] ?? '');
+        $redirect = $segment === $this->defaultLanguage;
 
-        return [$segment, $rest, $segment === $this->defaultLanguage];
+        // A redirect stays on this site: "/en//example.com" must not become "//example.com", which a
+        // browser reads as another host (and "/\" the same way).
+        return [$segment, $redirect ? '/' . ltrim($rest, '/\\') : $rest, $redirect];
     }
 
     // --- URLs ------------------------------------------------------------------

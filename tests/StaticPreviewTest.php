@@ -53,7 +53,7 @@ final class StaticPreviewTest extends FrameworkTestCase
         $out = $this->tempDir('deploy');
         self::write($out, [
             'index.html' => 'home', 'about.html' => 'about', 'about/credits.html' => 'credits', 'blog/index.html' => 'blog',
-            '404.html' => 'missing', 'style.css' => 'body{}', 'wrangler.jsonc' => '{"secret":1}',
+            '404.html' => 'missing', 'style.css' => 'body{}', 'wrangler.jsonc' => '{"secret":1}', '.wrangler/state.json' => '{"secret":2}',
             '_redirects' => "# rules\n/old /about 301\n",
         ]);
         $port = 18000 + random_int(0, 999);
@@ -81,6 +81,10 @@ final class StaticPreviewTest extends FrameworkTestCase
             self::assertStringContainsString('Location: /about', $headers, '_redirects');
             self::assertSame([404, 'missing'], array_slice($get('/nope'), 0, 2));
             self::assertSame([404, 'missing'], array_slice($get('/wrangler.jsonc'), 0, 2), 'the host\'s files stay private');
+            foreach (['/./wrangler.jsonc', '/%2e/wrangler.jsonc', '//wrangler.jsonc', '/WRANGLER.jsonc', '/.//_redirects', '/.wrangler/state.json', '/%2e/.wrangler/state.json'] as $path) {
+                self::assertSame([404, 'missing'], array_slice($get($path), 0, 2), "{$path}: however the path is written");
+            }
+            self::assertSame([200, 'credits'], array_slice($get('/./about//credits'), 0, 2), 'the same normal path for the pages');
         } finally {
             proc_terminate($process);
             proc_close($process);

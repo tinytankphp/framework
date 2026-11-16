@@ -10,7 +10,8 @@ declare(strict_types=1);
  */
 
 $root = (string) getenv('TINYTANK_STATIC_ROOT');
-$path = rawurldecode((string) parse_url((string) $_SERVER['REQUEST_URI'], PHP_URL_PATH));
+// Not parse_url(): it reads "//name" as a host.
+$path = rawurldecode(explode('?', (string) $_SERVER['REQUEST_URI'], 2)[0]);
 if ($root === '' || str_contains($path, '..')) {
     http_response_code(400);
 
@@ -27,8 +28,12 @@ foreach (is_file("{$root}/_redirects") ? file("{$root}/_redirects", FILE_IGNORE_
     }
 }
 
-$private = ['/_headers', '/_redirects', '/wrangler.jsonc', '/worker.js', '/.assetsignore', '/.tinytank-static'];
-if (in_array($path, $private, true)) {
+// The host's own files are never served, however the path is written (/./_headers, //worker.js),
+// nor anything in a folder starting with a dot (.wrangler, wrangler's local state).
+$segments = array_values(array_filter(explode('/', str_replace('\\', '/', $path)), static fn (string $s) => $s !== '' && $s !== '.'));
+$path = '/' . implode('/', $segments) . ($segments !== [] && str_ends_with($path, '/') ? '/' : '');
+$private = ['_headers', '_redirects', 'wrangler.jsonc', 'worker.js', '.assetsignore', '.tinytank-static', '.wrangler'];
+if (in_array(strtolower($segments[0] ?? ''), $private, true)) {
     $path = '/__tinytank-not-found';
 }
 foreach ([$path, rtrim($path, '/') . '.html', rtrim($path, '/') . '/index.html'] as $candidate) {

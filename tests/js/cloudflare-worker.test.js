@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
-import worker, { ALERT_INTERVAL, alert, handle, message, validate } from '../../resources/static/cloudflare-worker.js';
+import worker, { ALERT_INTERVAL, TOKEN_GRACE, alert, checkToken, handle, message, validate } from '../../resources/static/cloudflare-worker.js';
 
 // A form as the build describes it (TinyTank\Static\Builder::formData()).
 const form = {
@@ -19,8 +19,8 @@ const form = {
     max_links: 2,
     subject: { en: 'Message from {name}', it: 'Messaggio da {name}' },
     messages: {
-        en: { required: 'This field is required.', email: 'Enter a valid email address.', choice: 'Choose one.', min: 'Use at least {min} characters.', max: 'Use at most {max} characters.', links: 'Please include at most {max} links.', not_sent: 'Your message wasn\'t sent.', check: 'Please check these:', back: 'Back to the form', failed: 'Sending didn\'t work.' },
-        it: { required: 'Campo obbligatorio.', email: 'Email non valida.', choice: 'Scegli.', min: 'Almeno {min} caratteri.', max: 'Al massimo {max} caratteri.', links: 'Al massimo {max} link.', not_sent: 'Messaggio non inviato.', check: 'Controlla:', back: 'Torna al modulo', failed: 'Invio non riuscito.' },
+        en: { required: 'This field is required.', email: 'Enter a valid email address.', choice: 'Choose one.', min: 'Use at least {min} characters.', max: 'Use at most {max} characters.', links: 'Please include at most {max} links.', not_sent: 'Your message wasn\'t sent.', check: 'Please check these:', back: 'Back to the form', failed: 'Sending didn\'t work.', expired: 'This page is out of date.' },
+        it: { required: 'Campo obbligatorio.', email: 'Email non valida.', choice: 'Scegli.', min: 'Almeno {min} caratteri.', max: 'Al massimo {max} caratteri.', links: 'Al massimo {max} link.', not_sent: 'Messaggio non inviato.', check: 'Controlla:', back: 'Torna al modulo', failed: 'Invio non riuscito.', expired: 'Pagina non aggiornata.' },
     },
 };
 
@@ -83,6 +83,80 @@ describe('the Worker', () => {
         expect((await handle(post(valid, { 'Sec-Fetch-Site': '', Origin: 'https://evil.test' }), env(), form, 'contact')).status).toBe(403);
         expect((await handle(new Request('https://lab909.dev/forms/contact'), env(), form, 'contact')).status).toBe(405);
         expect((await handle(post(valid, { 'Content-Length': '200000' }), env(), form, 'contact')).status).toBe(413);
+    });
+
+    it('reads no more than its limit, whatever Content-Length says, and only forms', async () => {
+        // A body sent in pieces has no Content-Length.
+        const stream = () => new ReadableStream({
+            pull(controller) {
+                controller.enqueue(new TextEncoder().encode('message=' + 'a'.repeat(60_000) + '&'));
+            },
+        });
+        const streamed = new Request('https://lab909.dev/forms/contact', { method: 'POST', body: stream(), duplex: 'half', headers: { 'Sec-Fetch-Site': 'same-origin', 'Content-Type': 'application/x-www-form-urlencoded' } });
+        expect(streamed.headers.has('Content-Length')).toBe(false);
+        const e = env();
+        expect((await handle(streamed, e, form, 'contact')).status).toBe(413);
+
+        const json = new Request('https://lab909.dev/forms/contact', { method: 'POST', body: '{"name":"Ada"}', headers: { 'Sec-Fetch-Site': 'same-origin', 'Content-Type': 'application/json' } });
+        expect((await handle(json, e, form, 'contact')).status).toBe(400);
+        expect(e.sent).toHaveLength(0);
+    });
+
+    describe('with the timing check', () => {
+        // The same values as in tests/FormsTest.php: what PHP signs (Forms::staticToken()), the Worker checks.
+        const built = 1_700_000_000;
+        const key = '186110592885468a7ca27320d9e54368c97f95d26d8bb2673e92f4f75f941a85';
+        const token = `contact.${built}.e9799be4a1aac797e5fe89b825d3ce88768b54e481cf27d5e33d39d8c1c5efd7`;
+        const timed = { ...form, token: { key, built } };
+        // A token as the build of another time writes it.
+        const sign = async (name, time, secret = key) => {
+            const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+            const signature = new Uint8Array(await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(`tinytank-static-form|${name}.${time}`)));
+            return `${name}.${time}.${[...signature].map((byte) => byte.toString(16).padStart(2, '0')).join('')}`;
+        };
+
+        it('takes the token the build signed into the page', async () => {
+            expect(await sign('contact', built)).toBe(token);
+            expect(await checkToken(timed, 'contact', token, built + 3600)).toBe('ok');
+            expect(await checkToken(timed, 'contact', token, built + 365 * 86400)).toBe('ok', 'a static site may not be built again for a year');
+            expect(await checkToken(form, 'contact', undefined)).toBe('ok', 'a form without the check needs none');
+
+            const e = env();
+            expect((await handle(post({ ...valid, _token: token }), e, timed, 'contact')).status).toBe(303);
+            expect(e.sent).toHaveLength(1);
+        });
+
+        it('tells a script without a token, or with a made-up one, that it worked, and sends nothing', async () => {
+            const now = built + 60;
+            expect(await checkToken(timed, 'contact', null, now)).toBe('forged');
+            expect(await checkToken(timed, 'contact', '', now)).toBe('forged');
+            expect(await checkToken(timed, 'contact', token.slice(0, -1) + (token.endsWith('0') ? '1' : '0'), now)).toBe('forged');
+            expect(await checkToken(timed, 'contact', token.replace(String(built), String(built + 1)), now)).toBe('forged', 'the time is signed');
+            expect(await checkToken(timed, 'contact', await sign('contact', built, 'another-key'), now)).toBe('forged');
+            expect(await checkToken(timed, 'newsletter', await sign('contact', built), now)).toBe('forged', 'another form\'s token');
+            expect(await checkToken(timed, 'contact', await sign('contact', now + 3600), now)).toBe('forged', 'a time still to come');
+            expect(await checkToken(timed, 'contact', new File(['x'], 'token.txt'), now)).toBe('forged', 'a file where the token goes');
+
+            const e = env();
+            expect((await handle(post(valid), e, timed, 'contact')).status).toBe(303);
+            expect((await handle(post({ ...valid, _token: 'contact.1.abc' }), e, timed, 'contact')).status).toBe(303);
+            expect(e.sent).toHaveLength(0);
+        });
+
+        it('asks to reload a page of a build long replaced', async () => {
+            const now = built + 60;
+            expect(await checkToken(timed, 'contact', await sign('contact', built - TOKEN_GRACE + 60), now)).toBe('ok', 'the build before, for a day');
+            const old = await sign('contact', built - TOKEN_GRACE - 60);
+            expect(await checkToken(timed, 'contact', old, now)).toBe('expired');
+
+            const e = env();
+            const response = await handle(post({ ...valid, _token: old, _page: '/it/contatti' }), e, timed, 'contact');
+            expect(response.status).toBe(422);
+            expect(await response.text()).toContain('Pagina non aggiornata.');
+            const datastar = await handle(post({ ...valid, _token: old }, { 'Datastar-Request': 'true' }), e, timed, 'contact');
+            expect(await datastar.text()).toContain('Your message wasn\'t sent. This page is out of date.');
+            expect(e.sent).toHaveLength(0);
+        });
     });
 
     it('says when sending failed, without losing the way back', async () => {

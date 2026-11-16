@@ -19,6 +19,7 @@ use TinyTank\Seo\Seo;
 use Symfony\Component\Dotenv\Dotenv;
 use Symfony\Component\ErrorHandler\Debug;
 use Symfony\Component\ErrorHandler\ErrorHandler;
+use Symfony\Component\HttpFoundation\Exception\RequestExceptionInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -702,6 +703,10 @@ final class Kernel
         } catch (HttpError $e) {
             // The request's fault (bad signals, a handler's 403…): its status, in debug mode too.
             $response = $this->error($e->status, $this->t($e->getMessage()));
+        } catch (RequestExceptionInterface) {
+            // A request no browser sends (an array where one value goes: ?config[]=1, _token[]=…):
+            // its fault, not an error of the site's, so nothing to log or alert about.
+            $response = $this->error(400, $this->t('Bad request.'));
         } catch (\Throwable $e) {
             if ($this->debug) {
                 throw $e;

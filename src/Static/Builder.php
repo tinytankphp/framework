@@ -216,6 +216,11 @@ final class Builder
             if ($name === null || str_ends_with($path, '/sent')) {
                 continue;
             }
+            // The host only takes posts carrying the build's token (`timing`): a form written without
+            // form_spam() would look sent and never arrive.
+            if ($this->app->forms->get($name)->timing() && !str_contains($html, 'name="_token"')) {
+                $build->errors[$path] = "has the \"{$name}\" form without {{ form_spam('{$name}') }} inside it: the host would drop what it posts (the `timing` check's token is missing)";
+            }
             $language = $this->app->site->language();
             $build->forms[$name] ??= $this->formData($name);
             $build->forms[$name]['pages'][$path] = $language;
@@ -237,7 +242,7 @@ final class Builder
         return $form !== null ? $document->saveHtml($form) : null;
     }
 
-    /** @return array{pages: array<string, string>, fields: array<string, array{type: string, required: bool, min: ?int, max: int, choices: list<string>}>, to: list<string>, from: string, send: string, reply_to: ?string, honeypot: bool, max_links: ?int, subject: array<string, string>, messages: array<string, array<string, string>>, sent?: array<string, string>} */
+    /** @return array{pages: array<string, string>, fields: array<string, array{type: string, required: bool, min: ?int, max: int, choices: list<string>}>, to: list<string>, from: string, send: string, reply_to: ?string, honeypot: bool, max_links: ?int, token: ?array{key: string, built: int}, subject: array<string, string>, messages: array<string, array<string, string>>, sent?: array<string, string>} */
     private function formData(string $name): array
     {
         $form = $this->app->forms->get($name);
@@ -255,6 +260,9 @@ final class Builder
             'reply_to' => $form->replyTo,
             'honeypot' => $form->honeypot(),
             'max_links' => $form->maxLinks(),
+            // `timing`: the key the pages' tokens are signed with, and this build's time (older builds'
+            // tokens expire a day after it).
+            'token' => $form->timing() ? ['key' => $this->app->forms->staticTokenKey($name), 'built' => $this->app->forms->now()] : null,
             'subject' => [],
             'messages' => [],
             'sent' => [],
@@ -277,6 +285,7 @@ final class Builder
             'check' => $t('Please check these and send it again:'),
             'back' => $t('Back to the form'),
             'failed' => $t('Sending didn\'t work just now. Please try again in a few minutes.'),
+            'expired' => $t('This page is out of date: reload it and send the form again.'),
         ];
     }
 

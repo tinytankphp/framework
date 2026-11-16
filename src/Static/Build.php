@@ -25,10 +25,11 @@ final class Build
 
     /**
      * Forms the host answers (config/forms.php `static`), by name: the pages they're on (path =>
-     * language), and everything needed to check and send them without this server; `sent`: the form
+     * language), and everything needed to check and send them without this server (`token`: the key
+     * and time of the build's signed tokens, with the `timing` check); `sent`: the form
      * in its "sent" state, by page, for an answer in place (Datastar).
      *
-     * @var array<string, array{pages: array<string, string>, fields: array<string, array{type: string, required: bool, min: ?int, max: int, choices: list<string>}>, to: list<string>, from: string, send: string, reply_to: ?string, honeypot: bool, max_links: ?int, subject: array<string, string>, messages: array<string, array<string, string>>, sent?: array<string, string>}>
+     * @var array<string, array{pages: array<string, string>, fields: array<string, array{type: string, required: bool, min: ?int, max: int, choices: list<string>}>, to: list<string>, from: string, send: string, reply_to: ?string, honeypot: bool, max_links: ?int, token?: ?array{key: string, built: int}, subject: array<string, string>, messages: array<string, array<string, string>>, sent?: array<string, string>}>
      */
     public array $forms = [];
 

@@ -104,6 +104,32 @@ describe('sending through your mail server', () => {
         await expect(sending).rejects.not.toThrow(/wrong-password/);
     });
 
+    it('never logs in or sends without TLS, except to a server on this machine', async () => {
+        const { server, transcript, port } = await fakeServer(); // offers no STARTTLS
+        servers.push(server);
+        // The connection as the Worker asks for it, made to the local server whatever the host name.
+        const asked = [];
+        const open = (address, options) => {
+            asked.push([address.hostname, address.port, options.secureTransport]);
+            return connect({ hostname: '127.0.0.1', port }, { secureTransport: 'off' });
+        };
+
+        const sending = smtp({ SMTP_HOST: 'mail.example.com', SMTP_PORT: '2525', SMTP_USER: 'forms@lab909.dev', SMTP_PASSWORD: 'secret' }, 'forms@lab909.dev', 'me@lab909.dev', raw, open);
+
+        await expect(sending).rejects.toThrow('The mail server at mail.example.com:2525 doesn\'t offer TLS (STARTTLS), so nothing was sent');
+        expect(asked).toEqual([['mail.example.com', 2525, 'starttls']]);
+        expect(transcript.filter((line) => !line.startsWith('EHLO'))).toEqual([], 'no password, no message');
+
+        asked.length = 0;
+        for (const [host, smtpPort, expected] of [['mail.example.com', '465', 'on'], ['mail.example.com', '25', 'starttls'], ['localhost', '1025', 'off'], ['127.0.0.1', '587', 'starttls']]) {
+            await smtp({ SMTP_HOST: host, SMTP_PORT: smtpPort }, 'a@b.test', 'c@d.test', raw, (address, options) => {
+                asked.push(options.secureTransport);
+                throw new Error('asked');
+            }).catch(() => {});
+            expect(asked.pop()).toBe(expected);
+        }
+    });
+
     it('needs its secrets', async () => {
         await expect(smtp({}, 'a@b.test', 'c@d.test', raw, connect)).rejects.toThrow('SMTP_HOST is not set');
     });

@@ -186,6 +186,29 @@ final class FormsTest extends FrameworkTestCase
         self::assertSame('timing: expired', $check($token));
     }
 
+    public function testAStaticBuildsTokenIsSignedWithAKeyDerivedFromTheSecret(): void
+    {
+        $forms = new \TinyTank\Forms\Forms(
+            ['contact' => ['spam' => ['honeypot', 'timing' => 3]] + self::CONTACT, 'other' => self::CONTACT],
+            new \Twig\Environment(new \Twig\Loader\ArrayLoader()),
+            static fn (string $text) => $text,
+            static fn () => self::fail('a static page is a file: nothing to mark as not cacheable'),
+            'test-secret',
+            $this->tempDir('data'),
+            null,
+            null,
+            'Site',
+            clock: static fn () => 1_700_000_000,
+        );
+
+        // The same values as in tests/js/cloudflare-worker.test.js: the Worker checks what PHP signs.
+        self::assertSame('186110592885468a7ca27320d9e54368c97f95d26d8bb2673e92f4f75f941a85', $forms->staticTokenKey('contact'));
+        self::assertSame('contact.1700000000.e9799be4a1aac797e5fe89b825d3ce88768b54e481cf27d5e33d39d8c1c5efd7', $forms->staticToken('contact'));
+        self::assertStringContainsString('name="_token" value="contact.1700000000.e9799be4', $forms->staticMarkup('contact', '/contact'));
+        self::assertNotSame($forms->staticTokenKey('contact'), $forms->staticTokenKey('other'), 'each form its own key');
+        self::assertStringNotContainsString('test-secret', $forms->staticTokenKey('contact') . $forms->staticToken('contact'));
+    }
+
     public function testPagesThatPrintATokenAreNeverCached(): void
     {
         $app = $this->kernel(overrides: ['forms' => ['contact' => ['spam' => ['timing']] + self::CONTACT]]);

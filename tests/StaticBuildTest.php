@@ -70,6 +70,45 @@ final class StaticBuildTest extends FrameworkTestCase
         self::assertSame('static', $template->render());
     }
 
+    public function testAStaticFormWithTimingCarriesATokenSignedByTheBuild(): void
+    {
+        $root = $this->project();
+        self::write($root, [
+            'config/forms.php' => "<?php return ['contact' => ['fields' => ['email' => ['type' => 'email', 'required' => true]], 'to' => 'me@example.com', 'spam' => ['honeypot', 'timing' => 3], 'static' => ['from' => 'form@forms.example.com']]];",
+            'templates/custom-page.twig' => "{% extends '_layout.twig' %}{% block content %}<h1>{{ page.title }}</h1><form id=\"contact-form\" method=\"post\" action=\"{{ form_action('contact', '/contact') }}\">{{ form_spam('contact') }}</form>{% endblock %}",
+        ]);
+        $app = $this->kernel(false, ['url' => 'https://static.test', 'cache_dir' => $this->tempDir('cache'), 'forms' => require "{$root}/config/forms.php"], $root);
+        $out = $this->tempDir('out');
+        $before = time();
+
+        $build = (new Builder($app, $out))->run();
+
+        self::assertSame(1, preg_match('/name="_token" value="contact\.(\d+)\.([0-9a-f]{64})"/', (string) file_get_contents("{$out}/contact.html"), $m), 'in the page, for the host to check');
+        $token = $build->forms['contact']['token'] ?? null;
+        self::assertIsArray($token);
+        self::assertSame($app->forms->staticTokenKey('contact'), $token['key'], 'the host gets the key the page\'s token is signed with');
+        self::assertSame(hash_hmac('sha256', "tinytank-static-form|contact." . ($m[1] ?? ""), $token["key"]), $m[2] ?? "");
+        self::assertGreaterThanOrEqual($before, $token['built']);
+        self::assertLessThanOrEqual(time(), $token['built']);
+        self::assertStringContainsString('"key": "' . $token['key'] . '"', (string) file_get_contents("{$out}/worker.js"), 'in the Worker\'s code, which is never served');
+        self::assertStringContainsString('"expired": "This page is out of date', (string) file_get_contents("{$out}/worker.js"));
+        self::assertStringContainsString('worker.js', (string) file_get_contents("{$out}/.assetsignore"));
+    }
+
+    public function testAStaticFormWithTimingButNoTokenStopsTheBuild(): void
+    {
+        $root = $this->project();
+        self::write($root, [
+            'config/forms.php' => "<?php return ['contact' => ['fields' => ['email' => ['type' => 'email', 'required' => true]], 'to' => 'me@example.com', 'spam' => ['timing' => 3], 'static' => ['from' => 'form@forms.example.com']]];",
+            'templates/custom-page.twig' => "{% extends '_layout.twig' %}{% block content %}<h1>{{ page.title }}</h1><form id=\"contact-form\" method=\"post\" action=\"{{ form_action('contact', '/contact') }}\"></form>{% endblock %}",
+        ]);
+        $app = $this->kernel(false, ['url' => 'https://static.test', 'cache_dir' => $this->tempDir('cache'), 'forms' => require "{$root}/config/forms.php"], $root);
+
+        $build = (new Builder($app, $this->tempDir('out')))->run();
+
+        self::assertStringContainsString("without {{ form_spam('contact') }}", $build->errors['/contact'] ?? '', 'its posts would look sent and never arrive');
+    }
+
     public function testAStaticFormPostsToTheHostWhichGetsWhatItNeeds(): void
     {
         $root = $this->project();
@@ -95,7 +134,10 @@ final class StaticBuildTest extends FrameworkTestCase
         self::assertFileExists("{$out}/contact/sent.html", 'the "sent" state, where the host sends visitors');
         self::assertStringContainsString('<div hidden data-signals="{&quot;_forms&quot;:{&quot;contact&quot;:{&quot;sent&quot;:false,&quot;errors&quot;:{&quot;email&quot;:&quot;&quot;,&quot;message&quot;:&quot;&quot;,&quot;_form&quot;:&quot;&quot;}}}}"></div>', $html, 'the signals the host answers a Datastar post with');
 
+        self::assertStringNotContainsString('name="_token"', $html, 'no `timing` check in this form: no token');
+
         $form = $build->forms['contact'] ?? [];
+        self::assertNull($form['token'] ?? null);
         // Posted by Datastar, the host puts the form's "sent" state in place, by its id; each language its own.
         self::assertStringStartsWith('<form id="contact-form" method="post" action="/forms/contact" data-on:submit__prevent="@post(&quot;/forms/contact&quot;, {&quot;contentType&quot;:&quot;form&quot;})">', $form['sent']['/contact'] ?? '', 'Datastar\'s attributes kept');
         self::assertStringEndsWith('</form>', $form['sent']['/contact'] ?? '');

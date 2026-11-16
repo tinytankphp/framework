@@ -40,6 +40,9 @@ final class Forms
 
     private ?TransportInterface $transport = null;
 
+    /** @var \Closure(): int */
+    private readonly \Closure $clock;
+
     /**
      * @param array<string, array<mixed>>                    $config     config/forms.php
      * @param \Closure(string, array<string, mixed>): string $t          translates a UI text
@@ -51,7 +54,7 @@ final class Forms
         private readonly Environment $twig,
         private readonly \Closure $t,
         \Closure $noStore,
-        #[\SensitiveParameter] string $secret,
+        #[\SensitiveParameter] private readonly string $secret,
         string $dataDir,
         private readonly ?string $mailerDsn,
         private readonly ?string $mailerFrom,
@@ -65,6 +68,7 @@ final class Forms
         }
         $this->forms = $forms;
         $clock ??= time(...);
+        $this->clock = $clock;
 
         // The built-in checks: everything stays on this server.
         $this->addSpamCheck('honeypot', static fn () => new Honeypot());
@@ -132,20 +136,52 @@ final class Forms
     public const STATIC_URL = '/forms';
 
     /**
-     * The markup a static build puts in a form: what works without this server (the honeypot), the
-     * page the form is on, for the host to send the visitor back to, in the page's language, and the
-     * signals the host answers a Datastar post with: `_forms.<name>.sent`, and `.errors.<field>` and
-     * `.errors._form` ('' when fine), for the template to show.
+     * The markup a static build puts in a form: what works without this server (the honeypot, and
+     * with `timing` a token signed at build time, see staticToken()), the page the form is on, for
+     * the host to send the visitor back to, in the page's language, and the signals the host answers
+     * a Datastar post with: `_forms.<name>.sent`, and `.errors.<field>` and `.errors._form` ('' when
+     * fine), for the template to show.
      */
     public function staticMarkup(string $form, string $page): string
     {
         $form = $this->get($form);
         $honeypot = $form->honeypot() ? (new Spam\Honeypot())->markup($form) : '';
+        if ($form->timing()) {
+            $honeypot .= '<input type="hidden" name="_token" value="' . htmlspecialchars($this->staticToken($form->name), ENT_QUOTES | ENT_HTML5) . '">';
+        }
         $errors = array_fill_keys([...array_keys($form->fields), '_form'], '');
         $signals = json_encode(['_forms' => [$form->name => ['sent' => false, 'errors' => $errors]]], JSON_THROW_ON_ERROR | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 
         return $honeypot . '<input type="hidden" name="_page" value="' . htmlspecialchars($page, ENT_QUOTES | ENT_HTML5) . '">'
             . '<div hidden data-signals="' . htmlspecialchars($signals, ENT_QUOTES | ENT_HTML5) . '"></div>';
+    }
+
+    /**
+     * A static build's token for a form: "<form>.<build time>.<signature>". The pages are files, so
+     * the token is the same for every visitor until the next build: it can't time a submission as the
+     * PHP site does, but the host only takes posts that carry one from this site's pages (a script
+     * posting blindly has none), and a build makes the tokens of older builds expire.
+     */
+    public function staticToken(string $form): string
+    {
+        $payload = $this->get($form)->name . '.' . ($this->clock)();
+
+        return $payload . '.' . hash_hmac('sha256', 'tinytank-static-form|' . $payload, $this->staticTokenKey($form));
+    }
+
+    /**
+     * The key the host checks a form's tokens with, written in its code by the build: derived from
+     * APP_SECRET, which stays on this machine.
+     */
+    public function staticTokenKey(string $form): string
+    {
+        return hash_hmac('sha256', 'tinytank-static-form-key|' . $this->get($form)->name, $this->secret);
+    }
+
+    /** The current time, as the forms see it (a static build stamps its tokens with it). */
+    public function now(): int
+    {
+        return ($this->clock)();
     }
 
     /** A form's state before anything was sent: for the page that shows it. */

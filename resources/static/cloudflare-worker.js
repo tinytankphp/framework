@@ -1,7 +1,9 @@
 // TinyTank's Worker for a static build on Cloudflare Workers (bin/console build:static, host
 // "cloudflare"). Every page is a static file; this code runs only for what isn't one: the forms,
 // posted to /forms/<name>. It checks them like the PHP site does (config/forms.php: required fields,
-// lengths, email format, choices, the honeypot, the links limit) and emails them, then sends the
+// lengths, email format, choices, the honeypot, the links limit, and with `timing` the token the build
+// signed into the form's pages: only posts from this site's pages, of this build or one a day older)
+// and emails them, then sends the
 // visitor to the form page's "sent" state. Posted by Datastar (a Datastar-Request header), it answers
 // in place instead, so nothing typed is lost: the form's "sent" HTML (from the build), or its errors as
 // the `_forms.<name>` signals (`errors.<field>`, `errors._form`). Two ways to send, per form (`static.send` in
@@ -16,6 +18,10 @@ import { connect } from 'cloudflare:sockets';
 const FORMS = {}; // filled in by the build
 
 const LIMIT = 100_000; // bytes: far more than any form needs
+
+// A page of an older build still posts for a day after a new one (a tab left open, a cached page).
+export const TOKEN_GRACE = 86400; // seconds
+const CLOCK_SKEW = 300;
 
 export default {
     async fetch(request, env, ctx) {
@@ -40,11 +46,15 @@ export async function handle(request, env, form, name, ctx = null) {
     if ((site && !['same-origin', 'none'].includes(site)) || (origin && origin !== new URL(request.url).origin)) {
         return new Response('Forbidden', { status: 403 });
     }
-    if (Number(request.headers.get('Content-Length') ?? 0) > LIMIT) {
+    let data;
+    try {
+        data = await read(request);
+    } catch {
+        return new Response('Bad Request', { status: 400 });
+    }
+    if (data === null) {
         return new Response('Payload Too Large', { status: 413 });
     }
-
-    const data = await request.formData();
     const page = Object.hasOwn(form.pages, data.get('_page')) ? data.get('_page') : Object.keys(form.pages)[0];
     const language = form.pages[page];
     const texts = form.messages[language] ?? Object.values(form.messages)[0];
@@ -56,6 +66,18 @@ export async function handle(request, env, form, name, ctx = null) {
     // A bot filled in the hidden field: it's told it worked, and nothing is sent.
     if (form.honeypot && String(data.get('website') ?? '') !== '') {
         return sent;
+    }
+
+    // No token of this site's pages, or a made-up one: a script, told it worked too. A token of a
+    // build long replaced: a page left open, which says so.
+    const token = await checkToken(form, name, data.get('_token'));
+    if (token === 'forged') {
+        return sent;
+    }
+    if (token === 'expired') {
+        return datastar
+            ? answer(name, form, page, { _form: `${texts.not_sent} ${texts.expired}` })
+            : page_(texts.not_sent, texts.expired, [], page, texts.back, language, 422);
     }
 
     const [values, errors] = validate(form, data, texts);
@@ -85,6 +107,64 @@ export async function handle(request, env, form, name, ctx = null) {
     }
 
     return sent;
+}
+
+/**
+ * The posted form, read up to LIMIT bytes whatever Content-Length says (or doesn't): null past it.
+ * Throws when the body isn't a form.
+ */
+async function read(request) {
+    if (Number(request.headers.get('Content-Length') ?? 0) > LIMIT) {
+        return null;
+    }
+    const chunks = [];
+    let size = 0;
+    if (request.body) {
+        const reader = request.body.getReader();
+        for (;;) {
+            const { value, done } = await reader.read();
+            if (done) {
+                break;
+            }
+            size += value.byteLength;
+            if (size > LIMIT) {
+                await reader.cancel().catch(() => {});
+                return null;
+            }
+            chunks.push(value);
+        }
+    }
+
+    return new Response(new Blob(chunks), { headers: { 'Content-Type': request.headers.get('Content-Type') ?? '' } }).formData();
+}
+
+/**
+ * The token the build signed into the form's pages (TinyTank\Forms\Forms::staticToken()):
+ * "<form>.<build time>.<signature>", checked with the key the build wrote in FORMS. 'ok' (also for
+ * a form without the `timing` check), 'forged' (none, another form's, a wrong signature, a time
+ * still to come) or 'expired' (older than a day before this build). Exported for the tests.
+ */
+export async function checkToken(form, name, token, now = Date.now() / 1000) {
+    if (!form.token) {
+        return 'ok';
+    }
+    const parts = typeof token === 'string' ? token.split('.') : [];
+    if (parts.length !== 3 || parts[0] !== name || !/^\d{1,12}$/.test(parts[1]) || !/^[0-9a-f]{64}$/.test(parts[2])) {
+        return 'forged';
+    }
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey('raw', encoder.encode(form.token.key), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+    const signature = Uint8Array.from(parts[2].match(/../g), (byte) => parseInt(byte, 16));
+    // crypto.subtle.verify compares in constant time.
+    if (!(await crypto.subtle.verify('HMAC', key, signature, encoder.encode(`tinytank-static-form|${parts[0]}.${parts[1]}`)))) {
+        return 'forged';
+    }
+    const time = Number(parts[1]);
+    if (time > now + CLOCK_SKEW) {
+        return 'forged';
+    }
+
+    return time < form.token.built - TOKEN_GRACE ? 'expired' : 'ok';
 }
 
 /** The submitted values, normalised as the PHP site does, and what's wrong with them. */
@@ -159,16 +239,18 @@ export function message(form, name, values, language, to) {
 }
 
 /**
- * Sends one message through your mail server: port 465 (TLS from the start), 587 (STARTTLS), or any
- * other without TLS (a local test server). Logs in with AUTH PLAIN, or LOGIN, when SMTP_USER is set.
- * Exported for the tests.
+ * Sends one message through your mail server: port 465 (TLS from the start), or any other with
+ * STARTTLS (587, 2525…), which the server must offer: the password and the message never travel
+ * unencrypted. Only a server on this machine (localhost: a local test server) is used without TLS.
+ * Logs in with AUTH PLAIN, or LOGIN, when SMTP_USER is set. Exported for the tests.
  */
 export async function smtp(env, from, to, raw, open = connect) {
     if (!env.SMTP_HOST) {
         throw new Error('SMTP_HOST is not set: upload the SMTP secrets (bin/console publish:static).');
     }
     const port = Number(env.SMTP_PORT || 465);
-    const tls = port === 465 ? 'on' : port === 587 ? 'starttls' : 'off';
+    const local = ['localhost', '127.0.0.1', '::1', '[::1]'].includes(String(env.SMTP_HOST).toLowerCase());
+    const tls = port === 465 ? 'on' : local && port !== 587 ? 'off' : 'starttls';
     let socket = open({ hostname: env.SMTP_HOST, port }, { secureTransport: tls, allowHalfOpen: false });
     let session = conversation(socket);
     try {
@@ -176,6 +258,9 @@ export async function smtp(env, from, to, raw, open = connect) {
         const helo = from.split('@')[1] ?? 'localhost';
         let features = await session.command(`EHLO ${helo}`, 250);
         if (tls === 'starttls') {
+            if (!/^250[ -]STARTTLS\b/im.test(features)) {
+                throw new Error(`The mail server at ${env.SMTP_HOST}:${port} doesn't offer TLS (STARTTLS), so nothing was sent: use port 465 or 587.`);
+            }
             await session.command('STARTTLS', 220);
             session.release();
             socket = socket.startTls();

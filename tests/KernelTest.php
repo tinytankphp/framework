@@ -95,6 +95,20 @@ final class KernelTest extends FrameworkTestCase
         self::assertStringContainsString('app.ERROR: secret failure detail', $this->logged());
     }
 
+    public function testAMalformedRequestIsA400NotAnErrorOfTheSite(): void
+    {
+        foreach ([false, true] as $debug) {
+            $app = $this->kernel(debug: $debug);
+            $app->post('/read', static fn () => $app->request()->request->getString('_token'));
+
+            // An array where one value goes: Symfony refuses to read it as a string.
+            self::assertSame(400, $this->request($app, '/datastar?config[]=1')->getStatusCode());
+            $response = $app->handle(\Symfony\Component\HttpFoundation\Request::create('/read', 'POST', ['_token' => ['x']], server: ['HTTP_SEC_FETCH_SITE' => 'same-origin']));
+            self::assertSame(400, $response->getStatusCode());
+            self::assertStringNotContainsString('app.ERROR', $this->logged(), 'nothing to alert about');
+        }
+    }
+
     public function testExceptionsInDebugAreRethrown(): void
     {
         $this->expectExceptionMessage('secret failure detail');
