@@ -7,6 +7,8 @@ change behaviour, and its notes say what to update in your site.
 
 ## [Unreleased]
 
+## [0.1.11] - 2026-11-16
+
 Security fixes from a review of the framework. For an existing site: `composer update` (Symfony
 7.4.23); a static site with forms needs a new build and publish, built with the same `APP_SECRET`
 every time, and its form templates must call `{{ form_spam('name') }}` inside the `<form>` (the
@@ -504,7 +506,8 @@ The first tagged release. TinyTank is in beta: the API may still change between 
   want the same: `config/app.php` (`log` and `cdn` sections), `src/Controller/PageController.php`
   (`cdn: false` support), `config/routes.php` (blog page numbers up to 6 digits), `.env.example`.
 
-[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.10...HEAD
+[Unreleased]: https://github.com/tinytankphp/framework/compare/v0.1.11...HEAD
+[0.1.11]: https://github.com/tinytankphp/framework/compare/v0.1.10...v0.1.11
 [0.1.10]: https://github.com/tinytankphp/framework/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/tinytankphp/framework/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/tinytankphp/framework/compare/v0.1.7...v0.1.8
